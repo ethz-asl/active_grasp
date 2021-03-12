@@ -11,15 +11,13 @@ from utils import *
 
 class PandaArm(object):
     def __init__(self):
-        self.num_dof = 7
-        self.ee_link_id = 7
-        self.ee_frame_id = "panda_link7"
+        self.nr_dof = 7
 
         self.named_joint_values = {"ready": [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]}
 
-        self.upper_limits = [-7] * self.num_dof
-        self.lower_limits = [7] * self.num_dof
-        self.ranges = [7] * self.num_dof
+        self.upper_limits = [-7] * self.nr_dof
+        self.lower_limits = [7] * self.nr_dof
+        self.ranges = [7] * self.nr_dof
 
     def load(self, pose):
         self.T_world_base = pose
@@ -29,8 +27,8 @@ class PandaArm(object):
             baseOrientation=pose.rotation.as_quat(),
             useFixedBase=True,
         )
-        for i in range(self.num_dof):
-            p.resetJointState(self.uid, i, self.named_joint_values["ready"][i])
+        for i, q_i in enumerate(self.named_joint_values["ready"]):
+            p.resetJointState(self.uid, i, q_i)
 
     def get_state(self):
         joint_states = p.getJointStates(self.uid, range(p.getNumJoints(self.uid)))[:7]

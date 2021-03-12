@@ -14,10 +14,13 @@ rospy.init_node("demo")
 
 env = SimPandaEnv(gui)
 model = Model("panda_link0", "panda_link8")
-controller = CartesianPoseController(model)
 
 q, dq = env.arm.get_state()
-marker = InteractiveMarkerWrapper("target", "panda_link0", model.pose(q))
+x0 = model.pose(q)
+
+controller = CartesianPoseController(model, x0)
+
+marker = InteractiveMarkerWrapper("target", "panda_link0", x0)
 
 # run the control loop
 while True:

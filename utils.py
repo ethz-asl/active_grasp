@@ -2,22 +2,23 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 import PyKDL as kdl
 
+import geometry_msgs.msg
 from interactive_markers.interactive_marker_server import *
 from interactive_markers.menu_handler import *
 from visualization_msgs.msg import *
 
 
 class InteractiveMarkerWrapper(object):
-    def __init__(self, name, frame_id, pose):
+    def __init__(self, name, frame_id, x0):
+        self.pose = x0
+
         server = InteractiveMarkerServer(topic_ns=name)
 
-        target_marker = InteractiveMarker()
-        target_marker.header.frame_id = frame_id
-        target_marker.name = name
-        target_marker.scale = 0.2
-        target_marker.pose.position.x = pose.translation[0]
-        target_marker.pose.position.y = pose.translation[1]
-        target_marker.pose.position.z = pose.translation[2]
+        int_marker = InteractiveMarker()
+        int_marker.header.frame_id = frame_id
+        int_marker.name = name
+        int_marker.scale = 0.2
+        int_marker.pose = to_pose_msg(x0)
 
         marker = Marker()
         marker.type = Marker.SPHERE
@@ -28,40 +29,65 @@ class InteractiveMarkerWrapper(object):
         marker.color.g = 0.5
         marker.color.b = 0.5
         marker.color.a = 0.6
+
         ctrl = InteractiveMarkerControl()
         ctrl.always_visible = True
         ctrl.markers.append(marker)
-        target_marker.controls.append(ctrl)
+        int_marker.controls.append(ctrl)
+
+        ctrl = InteractiveMarkerControl()
+        ctrl.orientation.w = 1
+        ctrl.orientation.x = 1
+        ctrl.orientation.y = 0
+        ctrl.orientation.z = 0
+        ctrl.name = "rotate_x"
+        ctrl.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        int_marker.controls.append(ctrl)
+
+        ctrl = InteractiveMarkerControl()
+        ctrl.orientation.w = 1
+        ctrl.orientation.x = 0
+        ctrl.orientation.y = 0
+        ctrl.orientation.z = 1
+        ctrl.name = "rotate_y"
+        ctrl.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        int_marker.controls.append(ctrl)
+
+        ctrl = InteractiveMarkerControl()
+        ctrl.orientation.w = 1
+        ctrl.orientation.x = 0
+        ctrl.orientation.y = 1
+        ctrl.orientation.z = 0
+        ctrl.name = "rotate_z"
+        ctrl.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
         ctrl.name = "move_x"
         ctrl.orientation.w = 1.0
         ctrl.orientation.x = 1.0
         ctrl.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
-        target_marker.controls.append(ctrl)
+        int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
         ctrl.name = "move_y"
         ctrl.orientation.w = 1.0
         ctrl.orientation.y = 1.0
         ctrl.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
-        target_marker.controls.append(ctrl)
+        int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
         ctrl.name = "move_z"
         ctrl.orientation.w = 1.0
         ctrl.orientation.z = 1.0
         ctrl.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
-        target_marker.controls.append(ctrl)
+        int_marker.controls.append(ctrl)
 
-        server.insert(target_marker, self.cb)
+        server.insert(int_marker, self.cb)
         server.applyChanges()
 
-        self.pose = pose
-
     def cb(self, feedback):
-        pos = feedback.pose.position
-        self.pose = Transform(Rotation.identity(), np.r_[pos.x, pos.y, pos.z])
+        self.pose = from_pose_msg(feedback.pose)
 
     def get_pose(self):
         return self.pose
@@ -126,6 +152,9 @@ class Transform(object):
         return cls(rotation, translation)
 
 
+# KDL Conversions
+
+
 def to_kdl_jnt_array(q):
     jnt_array = kdl.JntArray(len(q))
     for i, q_i in enumerate(q):
@@ -139,3 +168,57 @@ def kdl_to_mat(m):
         for j in range(m.columns()):
             mat[i, j] = m[i, j]
     return mat
+
+
+# ROS Conversions
+
+
+def to_point_msg(point):
+    msg = geometry_msgs.msg.Point()
+    msg.x = point[0]
+    msg.y = point[1]
+    msg.z = point[2]
+    return msg
+
+
+def from_point_msg(msg):
+    return np.r_[msg.x, msg.y, msg.z]
+
+
+def to_vector3_msg(vector3):
+    msg = geometry_msgs.msg.Vector3()
+    msg.x = vector3[0]
+    msg.y = vector3[1]
+    msg.z = vector3[2]
+    return msg
+
+
+def from_vector3_msg(msg):
+    return np.r_[msg.x, msg.y, msg.z]
+
+
+def to_quat_msg(orientation):
+    quat = orientation.as_quat()
+    msg = geometry_msgs.msg.Quaternion()
+    msg.x = quat[0]
+    msg.y = quat[1]
+    msg.z = quat[2]
+    msg.w = quat[3]
+    return msg
+
+
+def from_quat_msg(msg):
+    return Rotation.from_quat([msg.x, msg.y, msg.z, msg.w])
+
+
+def to_pose_msg(transform):
+    msg = geometry_msgs.msg.Pose()
+    msg.position = to_point_msg(transform.translation)
+    msg.orientation = to_quat_msg(transform.rotation)
+    return msg
+
+
+def from_pose_msg(msg):
+    position = from_point_msg(msg.position)
+    orientation = from_quat_msg(msg.orientation)
+    return Transform(orientation, position)
