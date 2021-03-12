@@ -105,9 +105,13 @@ class SimPandaEnv(object):
 
     def _publish_state(self, event):
         positions, velocities = self.arm.get_state()
+        width = self.gripper.read()
         msg = JointState()
         msg.header.stamp = rospy.Time.now()
-        msg.name = ["panda_joint{}".format(i) for i in range(1, 8)]
-        msg.position = positions
+        msg.name = ["panda_joint{}".format(i) for i in range(1, 8)] + [
+            "panda_finger_joint1",
+            "panda_finger_joint2",
+        ]
+        msg.position = np.r_[positions, 0.5 * width, 0.5 * width]
         msg.velocity = velocities
         self.state_pub.publish(msg)

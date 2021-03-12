@@ -5,6 +5,7 @@ import PyKDL as kdl
 import geometry_msgs.msg
 from interactive_markers.interactive_marker_server import *
 from interactive_markers.menu_handler import *
+import std_msgs.msg
 from visualization_msgs.msg import *
 
 
@@ -20,66 +21,52 @@ class InteractiveMarkerWrapper(object):
         int_marker.scale = 0.2
         int_marker.pose = to_pose_msg(x0)
 
+        # Attach visible sphere
         marker = Marker()
         marker.type = Marker.SPHERE
-        marker.scale.x = 0.05
-        marker.scale.y = 0.05
-        marker.scale.z = 0.05
-        marker.color.r = 0.0
-        marker.color.g = 0.5
-        marker.color.b = 0.5
-        marker.color.a = 0.6
+        marker.scale = to_vector3_msg([0.05, 0.05, 0.05])
+        marker.color = to_color_msg([0.0, 0.5, 0.5, 0.6])
 
         ctrl = InteractiveMarkerControl()
         ctrl.always_visible = True
         ctrl.markers.append(marker)
         int_marker.controls.append(ctrl)
 
+        # Attach rotation controls
         ctrl = InteractiveMarkerControl()
-        ctrl.orientation.w = 1
-        ctrl.orientation.x = 1
-        ctrl.orientation.y = 0
-        ctrl.orientation.z = 0
         ctrl.name = "rotate_x"
+        ctrl.orientation = to_quat_msg(Rotation.from_quat([1, 0, 0, 1]))
         ctrl.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
         int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
-        ctrl.orientation.w = 1
-        ctrl.orientation.x = 0
-        ctrl.orientation.y = 0
-        ctrl.orientation.z = 1
         ctrl.name = "rotate_y"
+        ctrl.orientation = to_quat_msg(Rotation.from_quat([0, 1, 0, 1]))
         ctrl.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
         int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
-        ctrl.orientation.w = 1
-        ctrl.orientation.x = 0
-        ctrl.orientation.y = 1
-        ctrl.orientation.z = 0
         ctrl.name = "rotate_z"
+        ctrl.orientation = to_quat_msg(Rotation.from_quat([0, 0, 1, 1]))
         ctrl.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
         int_marker.controls.append(ctrl)
 
+        # Attach translation controls
         ctrl = InteractiveMarkerControl()
         ctrl.name = "move_x"
-        ctrl.orientation.w = 1.0
-        ctrl.orientation.x = 1.0
+        ctrl.orientation = to_quat_msg(Rotation.from_quat([1, 0, 0, 1]))
         ctrl.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
         int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
         ctrl.name = "move_y"
-        ctrl.orientation.w = 1.0
-        ctrl.orientation.y = 1.0
+        ctrl.orientation = to_quat_msg(Rotation.from_quat([0, 1, 0, 1]))
         ctrl.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
         int_marker.controls.append(ctrl)
 
         ctrl = InteractiveMarkerControl()
         ctrl.name = "move_z"
-        ctrl.orientation.w = 1.0
-        ctrl.orientation.z = 1.0
+        ctrl.orientation = to_quat_msg(Rotation.from_quat([0, 0, 1, 1]))
         ctrl.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
         int_marker.controls.append(ctrl)
 
@@ -88,9 +75,6 @@ class InteractiveMarkerWrapper(object):
 
     def cb(self, feedback):
         self.pose = from_pose_msg(feedback.pose)
-
-    def get_pose(self):
-        return self.pose
 
 
 class Transform(object):
@@ -171,6 +155,15 @@ def kdl_to_mat(m):
 
 
 # ROS Conversions
+
+
+def to_color_msg(color):
+    msg = std_msgs.msg.ColorRGBA()
+    msg.r = color[0]
+    msg.g = color[1]
+    msg.b = color[2]
+    msg.a = color[3]
+    return msg
 
 
 def to_point_msg(point):

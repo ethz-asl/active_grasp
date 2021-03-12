@@ -13,7 +13,7 @@ dt = 1.0 / 60.0
 rospy.init_node("demo")
 
 env = SimPandaEnv(gui)
-model = Model("panda_link0", "panda_link8")
+model = Model("panda_link0", "panda_ee")
 
 q, dq = env.arm.get_state()
 x0 = model.pose(q)
@@ -24,7 +24,7 @@ marker = InteractiveMarkerWrapper("target", "panda_link0", x0)
 
 # run the control loop
 while True:
-    controller.set_target(marker.get_pose())
+    controller.set_target(marker.pose)
     q, dq = env.arm.get_state()
     cmd = controller.update(q, dq)
     env.arm.set_desired_joint_velocities(cmd)
