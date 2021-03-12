@@ -7,8 +7,8 @@ class CartesianPoseController:
         self.x_d = x0
         self.kp = np.ones(6) * 5.0
 
-    def set_target(self, x_d):
-        self.x_d = x_d
+    def set_target(self, pose):
+        self.x_d = pose
 
     def update(self, q, dq):
         x = self.model.pose(q)

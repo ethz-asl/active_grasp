@@ -6,7 +6,6 @@ from robot_sim import *
 from utils import *
 
 
-# parameters
 gui = True
 dt = 1.0 / 60.0
 
@@ -22,7 +21,6 @@ controller = CartesianPoseController(model, x0)
 
 marker = InteractiveMarkerWrapper("target", "panda_link0", x0)
 
-# run the control loop
 while True:
     controller.set_target(marker.pose)
     q, dq = env.arm.get_state()
