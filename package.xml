@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>active_grasp</name>
+    <version>0.1.0</version>
+    <description>TODO</description>
+    <maintainer email="mbreyer@ethz.ch">Michel Breyer</maintainer>
+    <license>TODO</license>
+    <url></url>
+    <buildtool_depend>catkin</buildtool_depend>
+    <depend>rospy</depend>
+    <depend>kdl_parser_py</depend>
+</package>
