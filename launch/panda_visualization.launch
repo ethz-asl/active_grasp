@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<launch>
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find franka_description)/robots/panda_arm.urdf.xacro" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="T_world_robot" args="0.03226862 -0.06137175  0.04107702 0.00099995 0. 0.39898185 0.91695828 panda_link8 camera_depth_optical_frame" />
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+  <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d /home/michel/catkin_ws/src/active_grasp/launch/panda_visualization.rviz" />
+</launch>
