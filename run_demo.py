@@ -1,7 +1,8 @@
 import rospy
 
 from controllers import *
-from simulation import *
+from model import *
+from robot_sim import *
 from utils import *
 
 
@@ -12,11 +13,11 @@ dt = 1.0 / 60.0
 rospy.init_node("demo")
 
 env = SimPandaEnv(gui)
-model = env.arm
+model = Model("panda_link0", "panda_link8")
 controller = CartesianPoseController(model)
 
-init_ee_pose = env.arm.pose()
-marker = InteractiveMarkerWrapper("target", "panda_link0", init_ee_pose)
+q, dq = env.arm.get_state()
+marker = InteractiveMarkerWrapper("target", "panda_link0", model.pose(q))
 
 # run the control loop
 while True:
@@ -24,4 +25,5 @@ while True:
     q, dq = env.arm.get_state()
     cmd = controller.update(q, dq)
     env.arm.set_desired_joint_velocities(cmd)
+
     env.forward(dt)

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
+import PyKDL as kdl
 
 from interactive_markers.interactive_marker_server import *
 from interactive_markers.menu_handler import *
@@ -109,3 +110,32 @@ class Transform(object):
         rotation = Rotation.from_quat(list[:4])
         translation = list[4:]
         return cls(rotation, translation)
+
+    @classmethod
+    def from_kdl(cls, f):
+        rotation = Rotation.from_matrix(
+            np.array(
+                [
+                    [f.M[0, 0], f.M[0, 1], f.M[0, 2]],
+                    [f.M[1, 0], f.M[1, 1], f.M[1, 2]],
+                    [f.M[2, 0], f.M[2, 1], f.M[2, 2]],
+                ]
+            )
+        )
+        translation = np.r_[f.p[0], f.p[1], f.p[2]]
+        return cls(rotation, translation)
+
+
+def to_kdl_jnt_array(q):
+    jnt_array = kdl.JntArray(len(q))
+    for i, q_i in enumerate(q):
+        jnt_array[i] = q_i
+    return jnt_array
+
+
+def kdl_to_mat(m):
+    mat = np.zeros((m.rows(), m.columns()))
+    for i in range(m.rows()):
+        for j in range(m.columns()):
+            mat[i, j] = m[i, j]
+    return mat

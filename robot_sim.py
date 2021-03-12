@@ -48,18 +48,6 @@ class PandaArm(object):
                 self.uid, i, p.VELOCITY_CONTROL, targetVelocity=velocity
             )
 
-    def pose(self):
-        result = p.getLinkState(self.uid, self.ee_link_id, computeForwardKinematics=1)
-        _, _, _, _, frame_pos, frame_quat = result
-        T_world_ee = Transform(Rotation.from_quat(frame_quat), np.array(frame_pos))
-        return self.T_world_base.inverse() * T_world_ee
-
-    def jacobian(self, q):
-        q = np.r_[q, 0.0, 0.0].tolist()
-        q_dot, q_ddot = np.zeros(9).tolist(), np.zeros(9).tolist()
-        linear, _ = p.calculateJacobian(self.uid, 7, [0.0, 0.0, 0.0], q, q_dot, q_ddot)
-        return np.asarray(linear)[:, :7]
-
 
 class PandaGripper(object):
     def move(self, width):
