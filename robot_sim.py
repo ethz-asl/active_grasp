@@ -9,7 +9,7 @@ from sensor_msgs.msg import JointState
 from utils import *
 
 
-class PandaArm(object):
+class PandaArm:
     def __init__(self):
         self.nr_dof = 7
 
@@ -47,7 +47,7 @@ class PandaArm(object):
             )
 
 
-class PandaGripper(object):
+class PandaGripper:
     def move(self, width):
         for i in [9, 10]:
             p.setJointMotorControl2(
@@ -62,8 +62,48 @@ class PandaGripper(object):
         return p.getJointState(self.uid, 9)[0] + p.getJointState(self.uid, 10)[0]
 
 
-class Camera(object):
-    pass
+class Camera:
+    def __init__(self, uid, link_id, width, height, hfov, near, far):
+        self.uid = uid
+        self.link_id = link_id
+
+        f = width / (2.0 * np.tan(hfov / 2.0))
+        cx, cy = width / 2.0, height / 2.0
+
+        self.width = width
+        self.height = height
+        self.K = [f, 0.0, cx, 0.0, f, cy, 0.0, 0.0, 1.0]
+        self.near = near
+        self.far = far
+
+        self.proj_mat = p.computeProjectionMatrixFOV(
+            np.rad2deg(hfov), width / height, near, far
+        )
+
+    def update(self):
+        result = p.getLinkState(self.uid, self.link_id, computeForwardKinematics=1)
+        t_world_cam = result[4]
+        R_world_cam = Rotation.from_quat(result[5])
+        eye = t_world_cam
+        target = R_world_cam.apply(np.r_[0.0, 0.0, 1.0]) + t_world_cam
+        up = R_world_cam.apply(np.r_[0.0, -1.0, 0.0])
+        view_mat = p.computeViewMatrix(eye, target, up)
+
+        result = p.getCameraImage(
+            self.width,
+            self.height,
+            view_mat,
+            self.proj_mat,
+            renderer=p.ER_BULLET_HARDWARE_OPENGL,
+        )
+        color_img, z_buffer = result[2][:, :, :3], result[3]
+
+        color_img = color_img.astype(np.uint8)
+        depth_img = (
+            self.far * self.near / (self.far - (self.far - self.near) * z_buffer)
+        ).astype(np.float32)
+
+        return color_img, depth_img
 
 
 class SimPandaEnv(object):
@@ -87,8 +127,7 @@ class SimPandaEnv(object):
         self.arm.load(Transform(Rotation.identity(), np.r_[-0.8, 0.0, 0.4]))
         self.gripper = PandaGripper()
         self.gripper.uid = self.arm.uid
-
-        self.camera = None
+        self.camera = Camera(self.arm.uid, 12, 320, 240, 1.047, 0.2, 2.0)
 
         if publish_state:
             self.state_pub = rospy.Publisher("/joint_states", JointState, queue_size=10)
