@@ -6,6 +6,7 @@ import pybullet_data
 
 from sensor_msgs.msg import JointState
 
+from model import *
 from utils import *
 
 
@@ -107,13 +108,14 @@ class Camera:
 
 
 class SimPandaEnv(object):
-    def __init__(self, gui, dt=1.0 / 240.0, publish_state=True):
+    def __init__(self, gui, publish_state=True):
         self.gui = gui
-        self.dt = dt
+        self.rate = 240
         p.connect(p.GUI if gui else p.DIRECT)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.setTimeStep(dt)
+        p.setTimeStep(1.0 / self.rate)
         p.setGravity(0.0, 0.0, -9.8)
+        self.step_cnt = 0
 
         p.loadURDF("plane.urdf")
         p.loadURDF(
@@ -127,6 +129,7 @@ class SimPandaEnv(object):
         self.arm.load(Transform(Rotation.identity(), np.r_[-0.8, 0.0, 0.4]))
         self.gripper = PandaGripper()
         self.gripper.uid = self.arm.uid
+        self.model = Model("panda_link0", "panda_ee")
         self.camera = Camera(self.arm.uid, 12, 320, 240, 1.047, 0.2, 2.0)
 
         if publish_state:
@@ -134,13 +137,15 @@ class SimPandaEnv(object):
             rospy.Timer(rospy.Duration(1.0 / 30), self._publish_state)
 
     def forward(self, dt):
-        steps = int(dt / self.dt)
+        steps = int(dt * self.rate)
         for _ in range(steps):
-            self.step()
+            self._step()
 
-    def step(self):
+    def _step(self):
+        if self.step_cnt % int(self.rate / self.controller.rate) == 0:
+            self.controller.update()
         p.stepSimulation()
-        time.sleep(self.dt)
+        time.sleep(1.0 / self.rate)
 
     def _publish_state(self, event):
         positions, velocities = self.arm.get_state()

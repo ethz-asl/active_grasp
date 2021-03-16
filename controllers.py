@@ -2,15 +2,19 @@ import numpy as np
 
 
 class CartesianPoseController:
-    def __init__(self, model, x0):
+    def __init__(self, robot, model, rate):
+        self.robot = robot
         self.model = model
-        self.x_d = x0
+        self.rate = rate
+        self.x_d = None
         self.kp = np.ones(6) * 5.0
 
     def set_target(self, pose):
         self.x_d = pose
 
-    def update(self, q, dq):
+    def update(self):
+        q, _ = self.robot.get_state()
+
         x = self.model.pose(q)
         x_d = self.x_d
 
@@ -22,4 +26,4 @@ class CartesianPoseController:
         J_pinv = np.linalg.pinv(J)
         cmd = np.dot(J_pinv, self.kp * err)
 
-        return cmd
+        self.robot.set_desired_joint_velocities(cmd)
