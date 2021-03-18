@@ -79,9 +79,6 @@ class InteractiveMarkerWrapper(object):
 
 class Transform(object):
     def __init__(self, rotation, translation):
-        assert isinstance(rotation, Rotation)
-        assert isinstance(translation, (np.ndarray, list))
-
         self.rotation = rotation
         self.translation = np.asarray(translation, np.double)
 

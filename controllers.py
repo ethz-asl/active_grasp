@@ -2,12 +2,12 @@ import numpy as np
 
 
 class CartesianPoseController:
-    def __init__(self, robot, model, rate):
+    def __init__(self, robot, model, x0, rate):
         self.robot = robot
         self.model = model
         self.rate = rate
-        self.x_d = None
-        self.kp = np.ones(6) * 5.0
+        self.x_d = x0
+        self.kp = np.ones(6) * 4.0
 
     def set_target(self, pose):
         self.x_d = pose
