@@ -5,8 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotModel1/Status1
-        - /TF1/Frames1
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz/Selection
@@ -130,10 +128,34 @@ Visualization Manager:
       Value: true
       Visual Enabled: true
     - Class: rviz/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        panda_hand:
+          Value: true
+        panda_leftfinger:
+          Value: false
+        panda_link0:
+          Value: true
+        panda_link1:
+          Value: false
+        panda_link2:
+          Value: false
+        panda_link3:
+          Value: false
+        panda_link4:
+          Value: false
+        panda_link5:
+          Value: false
+        panda_link6:
+          Value: false
+        panda_link7:
+          Value: false
+        panda_link8:
+          Value: false
+        panda_rightfinger:
+          Value: false
       Marker Alpha: 1
       Marker Scale: 0.5
       Name: TF
@@ -141,17 +163,21 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        panda_link0:
+          panda_link1:
+            panda_link2:
+              panda_link3:
+                panda_link4:
+                  panda_link5:
+                    panda_link6:
+                      panda_link7:
+                        panda_link8:
+                          panda_hand:
+                            panda_leftfinger:
+                              {}
+                            panda_rightfinger:
+                              {}
       Update Interval: 0
-      Value: false
-    - Class: rviz/InteractiveMarkers
-      Enable Transparency: true
-      Enabled: true
-      Name: Target
-      Show Axes: false
-      Show Descriptions: true
-      Show Visual Aids: false
-      Update Topic: /target/update
       Value: true
   Enabled: true
   Global Options:
@@ -181,7 +207,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.2702323198318481
+      Distance: 1.3619381189346313
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -189,17 +215,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.06870806962251663
-        Y: 0.16815021634101868
-        Z: 0.3779522478580475
+        X: 0.14782209694385529
+        Y: 0.10340728610754013
+        Z: 0.3605891168117523
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.38539746403694153
+      Pitch: 0.21979668736457825
       Target Frame: <Fixed Frame>
-      Yaw: 5.683584213256836
+      Yaw: 5.333564758300781
     Saved: ~
 Window Geometry:
   Displays:
@@ -217,5 +243,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 1045
-  Y: 249
+  X: 659
+  Y: 27
