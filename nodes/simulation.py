@@ -1,8 +1,12 @@
+#!/usr/bin/env python3
+
 import argparse
 
+import actionlib
 import numpy as np
 import rospy
 
+import franka_gripper.msg
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import JointState
 
@@ -22,24 +26,31 @@ class BtSimNode:
         self.joint_state_pub = rospy.Publisher(
             "/joint_states", JointState, queue_size=10
         )
-        rospy.Subscriber("/target", Pose, self._target_pose_cb)
+        self.move_server = actionlib.SimpleActionServer(
+            "move",
+            franka_gripper.msg.MoveAction,
+            execute_cb=self.move,
+            auto_start=False,
+        )
+        self.move_server.start()
+        rospy.Subscriber("/target", Pose, self.target_pose_cb)
 
     def run(self):
         rate = rospy.Rate(self.sim.rate)
         self.step_cnt = 0
         while not rospy.is_shutdown():
-            self._handle_updates()
+            self.handle_updates()
             self.sim.step()
             self.step_cnt = (self.step_cnt + 1) % self.sim.rate
             rate.sleep()
 
-    def _handle_updates(self):
+    def handle_updates(self):
         if self.step_cnt % int(self.sim.rate / CONTROLLER_UPDATE_RATE) == 0:
             self.controller.update()
         if self.step_cnt % int(self.sim.rate / JOINT_STATE_PUBLISHER_RATE) == 0:
-            self._publish_joint_state()
+            self.publish_joint_state()
 
-    def _publish_joint_state(self):
+    def publish_joint_state(self):
         q, dq = self.sim.arm.get_state()
         width = self.sim.gripper.read()
         msg = JointState()
@@ -52,7 +63,11 @@ class BtSimNode:
         msg.velocity = dq
         self.joint_state_pub.publish(msg)
 
-    def _target_pose_cb(self, msg):
+    def move(self, goal):
+        self.sim.gripper.move(goal.width)
+        self.move_server.set_succeeded()
+
+    def target_pose_cb(self, msg):
         self.controller.set_target(from_pose_msg(msg))
 
 
@@ -64,6 +79,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gui", type=str, default=True)
-    args = parser.parse_args()
+    parser.add_argument("--gui", action="store_true")
+    args, _ = parser.parse_known_args()
     main(args)

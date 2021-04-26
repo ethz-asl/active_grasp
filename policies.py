@@ -3,12 +3,15 @@ import numpy as np
 import rospy
 import scipy.interpolate
 
+from robot_tools.spatial import Rotation, Transform
 from robot_tools.ros import *
 
 
 def get_policy(name):
-    if name == "fixed":
+    if name == "fixed-trajectory":
         return FixedTrajectory()
+    else:
+        raise ValueError("{} policy does not exist.".format(name))
 
 
 class BasePolicy:
