@@ -1,12 +1,12 @@
 import argparse
 
-from geometry_msgs.msg import Pose
 import numpy as np
 import rospy
-from std_srvs.srv import Trigger
+
+from geometry_msgs.msg import Pose
+import std_srvs.srv
 
 from policies import get_policy
-
 from robot_tools.ros import *
 
 
@@ -14,16 +14,25 @@ class GraspController:
     def __init__(self, policy, rate):
         self.policy = policy
         self.rate = rate
-
-        self.target_pose_pub = rospy.Publisher("/target", Pose, queue_size=10)
+        self.reset_client = rospy.ServiceProxy("reset", std_srvs.srv.Trigger)
+        self.target_pose_pub = rospy.Publisher("target", Pose, queue_size=10)
         self.gripper = PandaGripperRosInterface()
+        rospy.sleep(1.0)
+
+    def run(self):
+        self.reset()
+        self.explore()
+        self.execute_grasp()
+
+    def reset(self):
+        req = std_srvs.srv.TriggerRequest()
+        self.reset_client(req)
 
     def explore(self):
         r = rospy.Rate(self.rate)
-        done = False
         self.policy.start()
-        while not done:
-            done = self.policy.update()
+        while not self.policy.done:
+            self.policy.update()
             r.sleep()
 
     def execute_grasp(self):
@@ -41,11 +50,9 @@ class GraspController:
 
 def main(args):
     rospy.init_node("panda_grasp")
-
     policy = get_policy(args.policy)
     gc = GraspController(policy, args.rate)
-    gc.explore()
-    gc.execute_grasp()
+    gc.run()
 
 
 if __name__ == "__main__":

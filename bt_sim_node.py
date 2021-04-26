@@ -9,10 +9,12 @@ import rospy
 import franka_gripper.msg
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import JointState
+import std_srvs.srv
 
-from robot_tools.btsim import BtPandaEnv
 from robot_tools.controllers import CartesianPoseController
 from robot_tools.ros import *
+
+from simulation import BtPandaEnv
 
 CONTROLLER_UPDATE_RATE = 60
 JOINT_STATE_PUBLISHER_RATE = 60
@@ -22,26 +24,37 @@ class BtSimNode:
     def __init__(self, gui):
         self.sim = BtPandaEnv(gui=gui, sleep=False)
         self.controller = CartesianPoseController(self.sim.arm)
-
-        self.joint_state_pub = rospy.Publisher(
-            "/joint_states", JointState, queue_size=10
-        )
+        self.reset_server = rospy.Service("reset", std_srvs.srv.Trigger, self.reset)
         self.move_server = actionlib.SimpleActionServer(
             "move",
             franka_gripper.msg.MoveAction,
             execute_cb=self.move,
             auto_start=False,
         )
+        self.joint_state_pub = rospy.Publisher(
+            "joint_states", JointState, queue_size=10
+        )
+        rospy.Subscriber("target", Pose, self.target_pose_cb)
+        self.step_cnt = 0
+        self.reset_requested = False
         self.move_server.start()
-        rospy.Subscriber("/target", Pose, self.target_pose_cb)
+
+    def reset(self, req):
+        self.reset_requested = True
+        rospy.sleep(1.0)  # wait for the latest sim step to finish
+        self.sim.reset()
+        self.controller.set_target(self.sim.arm.pose())
+        self.step_cnt = 0
+        self.reset_requested = False
+        return std_srvs.srv.TriggerResponse(success=True)
 
     def run(self):
         rate = rospy.Rate(self.sim.rate)
-        self.step_cnt = 0
         while not rospy.is_shutdown():
-            self.handle_updates()
-            self.sim.step()
-            self.step_cnt = (self.step_cnt + 1) % self.sim.rate
+            if not self.reset_requested:
+                self.handle_updates()
+                self.sim.step()
+                self.step_cnt = (self.step_cnt + 1) % self.sim.rate
             rate.sleep()
 
     def handle_updates(self):
