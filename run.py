@@ -7,7 +7,8 @@ from geometry_msgs.msg import Pose
 import std_srvs.srv
 
 from policies import get_policy
-from robot_tools.ros import *
+from robot_utils.ros.conversions import *
+from robot_utils.ros.panda import PandaGripperRosInterface
 
 
 class GraspController:

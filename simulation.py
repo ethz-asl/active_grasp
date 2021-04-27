@@ -1,7 +1,7 @@
 import pybullet as p
 
-from robot_tools.btsim import *
-from robot_tools.spatial import Rotation, Transform
+from robot_utils.btsim import *
+from robot_utils.spatial import Rotation, Transform
 
 
 class BtPandaEnv(BtBaseEnv):
