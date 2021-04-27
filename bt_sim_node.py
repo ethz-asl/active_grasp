@@ -3,12 +3,13 @@
 import argparse
 
 import actionlib
+import cv_bridge
 import numpy as np
 import rospy
 
 import franka_gripper.msg
 from geometry_msgs.msg import Pose
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Image
 import std_srvs.srv
 
 from robot_tools.controllers import CartesianPoseController
@@ -17,23 +18,25 @@ from robot_tools.ros import *
 from simulation import BtPandaEnv
 
 CONTROLLER_UPDATE_RATE = 60
-JOINT_STATE_PUBLISHER_RATE = 60
+JOINT_PUBLISH_RATE = 60
+CAM_PUBLISH_RATE = 5
 
 
 class BtSimNode:
     def __init__(self, gui):
         self.sim = BtPandaEnv(gui=gui, sleep=False)
         self.controller = CartesianPoseController(self.sim.arm)
+        self.cv_bridge = cv_bridge.CvBridge()
         self.reset_server = rospy.Service("reset", std_srvs.srv.Trigger, self.reset)
         self.move_server = actionlib.SimpleActionServer(
             "move",
             franka_gripper.msg.MoveAction,
-            execute_cb=self.move,
-            auto_start=False,
+            self.move,
+            False,
         )
-        self.joint_state_pub = rospy.Publisher(
-            "joint_states", JointState, queue_size=10
-        )
+        self.joint_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
+        self.color_pub = rospy.Publisher("/cam/color/image_raw", Image, queue_size=10)
+        self.depth_pub = rospy.Publisher("/cam/depth/image_raw", Image, queue_size=10)
         rospy.Subscriber("target", Pose, self.target_pose_cb)
         self.step_cnt = 0
         self.reset_requested = False
@@ -60,8 +63,10 @@ class BtSimNode:
     def handle_updates(self):
         if self.step_cnt % int(self.sim.rate / CONTROLLER_UPDATE_RATE) == 0:
             self.controller.update()
-        if self.step_cnt % int(self.sim.rate / JOINT_STATE_PUBLISHER_RATE) == 0:
+        if self.step_cnt % int(self.sim.rate / JOINT_PUBLISH_RATE) == 0:
             self.publish_joint_state()
+        if self.step_cnt % int(self.sim.rate / CAM_PUBLISH_RATE) == 0:
+            self.publish_cam_imgs()
 
     def publish_joint_state(self):
         q, dq = self.sim.arm.get_state()
@@ -74,7 +79,14 @@ class BtSimNode:
         ]
         msg.position = np.r_[q, 0.5 * width, 0.5 * width]
         msg.velocity = dq
-        self.joint_state_pub.publish(msg)
+        self.joint_pub.publish(msg)
+
+    def publish_cam_imgs(self):
+        color, depth = self.sim.camera.update()
+        color_msg = self.cv_bridge.cv2_to_imgmsg(color, encoding="rgb8")
+        self.color_pub.publish(color_msg)
+        depth_msg = self.cv_bridge.cv2_to_imgmsg(depth)
+        self.depth_pub.publish(depth_msg)
 
     def move(self, goal):
         self.sim.gripper.move(goal.width)

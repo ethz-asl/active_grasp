@@ -4,7 +4,7 @@
   <arg name="launch_rviz" default="false" />
 
   <!-- Load parameters. -->
-  <param name="robot_description" command="$(find xacro)/xacro $(find franka_description)/robots/panda_arm_hand.urdf.xacro" />
+  <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/urdfs/panda_arm_hand.urdf.xacro" />
 
   <!-- Bringup the robot -->
   <node pkg="active_grasp" type="bt_sim_node.py" name="simulation" args="--gui" output="screen" />

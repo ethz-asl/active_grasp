@@ -8,7 +8,8 @@ class BtPandaEnv(BtBaseEnv):
     def __init__(self, gui=True, sleep=True):
         super().__init__(gui, sleep)
         self.arm = BtPandaArm()
-        self.gripper = BtPandaGripper()
+        self.gripper = BtPandaGripper(self.arm)
+        self.camera = BtCamera(self.arm, 9, 320, 240, 1.047, 0.1, 1.0)
         self.T_W_B = Transform(Rotation.identity(), np.r_[-0.6, 0.0, 0.4])
         self.load_table()
         self.load_robot()
@@ -29,7 +30,6 @@ class BtPandaEnv(BtBaseEnv):
 
     def load_robot(self):
         self.arm.load(self.T_W_B)
-        self.gripper.uid = self.arm.uid
 
     def load_objects(self):
         p.loadURDF("cube_small.urdf", [-0.2, 0.0, 0.8])
