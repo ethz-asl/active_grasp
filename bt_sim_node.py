@@ -14,6 +14,7 @@ import std_srvs.srv
 
 from robot_utils.controllers import CartesianPoseController
 from robot_utils.ros.conversions import *
+from robot_utils.ros.tf import TransformTree
 
 from simulation import BtPandaEnv
 
@@ -27,6 +28,7 @@ class BtSimNode:
         self.sim = BtPandaEnv(gui=gui, sleep=False)
         self.controller = CartesianPoseController(self.sim.arm)
         self.cv_bridge = cv_bridge.CvBridge()
+        self.tf_tree = TransformTree()
         self.reset_server = rospy.Service("reset", std_srvs.srv.Trigger, self.reset)
         self.move_server = actionlib.SimpleActionServer(
             "move",
@@ -41,6 +43,8 @@ class BtSimNode:
         self.step_cnt = 0
         self.reset_requested = False
         self.move_server.start()
+        T_base_task = Transform(Rotation.identity(), np.r_[0.2, -0.1, 0.1])
+        self.tf_tree.broadcast_static(T_base_task, "panda_link0", "task")
 
     def reset(self, req):
         self.reset_requested = True
