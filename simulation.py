@@ -7,6 +7,8 @@ from robot_utils.spatial import Rotation, Transform
 class BtPandaEnv(BtBaseEnv):
     def __init__(self, gui=True, sleep=True):
         super().__init__(gui, sleep)
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
         self.arm = BtPandaArm()
         self.gripper = BtPandaGripper(self.arm)
         self.camera = BtCamera(

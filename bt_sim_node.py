@@ -47,7 +47,7 @@ class BtSimNode:
         self.step_cnt = 0
         self.reset_requested = False
         self.move_server.start()
-        T_base_task = Transform(Rotation.identity(), np.r_[0.2, -0.1, 0.1])
+        T_base_task = Transform(Rotation.identity(), np.r_[0.2, -0.15, 0.1])
         self.tf_tree.broadcast_static(T_base_task, "panda_link0", "task")
 
     def reset(self, req):
@@ -97,6 +97,7 @@ class BtSimNode:
     def publish_cam_imgs(self):
         _, depth = self.sim.camera.update()
         depth_msg = self.cv_bridge.cv2_to_imgmsg(depth)
+        depth_msg.header.stamp = rospy.Time.now()
         self.depth_pub.publish(depth_msg)
 
     def move(self, goal):
