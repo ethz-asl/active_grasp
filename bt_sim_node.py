@@ -9,7 +9,7 @@ import rospy
 
 import franka_gripper.msg
 from geometry_msgs.msg import Pose
-from sensor_msgs.msg import JointState, Image
+from sensor_msgs.msg import JointState, Image, CameraInfo
 import std_srvs.srv
 
 from robot_utils.controllers import CartesianPoseController
@@ -37,7 +37,11 @@ class BtSimNode:
             False,
         )
         self.joint_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
-        self.color_pub = rospy.Publisher("/cam/color/image_raw", Image, queue_size=10)
+        self.cam_info_pub = rospy.Publisher(
+            "/cam/depth/camera_info", CameraInfo, queue_size=10
+        )
+        self.cam_info_msg = to_camera_info_msg(self.sim.camera.info)
+        self.cam_info_msg.header.frame_id = "cam_optical_frame"
         self.depth_pub = rospy.Publisher("/cam/depth/image_raw", Image, queue_size=10)
         rospy.Subscriber("target", Pose, self.target_pose_cb)
         self.step_cnt = 0
@@ -70,6 +74,7 @@ class BtSimNode:
         if self.step_cnt % int(self.sim.rate / JOINT_PUBLISH_RATE) == 0:
             self.publish_joint_state()
         if self.step_cnt % int(self.sim.rate / CAM_PUBLISH_RATE) == 0:
+            self.publish_cam_info()
             self.publish_cam_imgs()
 
     def publish_joint_state(self):
@@ -85,10 +90,12 @@ class BtSimNode:
         msg.velocity = dq
         self.joint_pub.publish(msg)
 
+    def publish_cam_info(self):
+        self.cam_info_msg.header.stamp = rospy.Time.now()
+        self.cam_info_pub.publish(self.cam_info_msg)
+
     def publish_cam_imgs(self):
-        color, depth = self.sim.camera.update()
-        color_msg = self.cv_bridge.cv2_to_imgmsg(color, encoding="rgb8")
-        self.color_pub.publish(color_msg)
+        _, depth = self.sim.camera.update()
         depth_msg = self.cv_bridge.cv2_to_imgmsg(depth)
         self.depth_pub.publish(depth_msg)
 
