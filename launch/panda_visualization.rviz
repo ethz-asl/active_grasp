@@ -25,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: Scene Cloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -191,6 +191,78 @@ Visualization Manager:
             {}
       Update Interval: 0
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /workspace
+      Name: Workspace
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Alpha: 0.20000000298023224
+      Autocompute Intensity Bounds: false
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: TSDF
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.007499999832361937
+      Style: Boxes
+      Topic: /tsdf
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: Scene Cloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Spheres
+      Topic: /points
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /grasps
+      Name: Predicted Grasps
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -219,7 +291,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.3004181385040283
+      Distance: 1.5115783214569092
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -227,17 +299,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.14782209694385529
-        Y: 0.10340728610754013
-        Z: 0.3605891168117523
+        X: 0.1477860063314438
+        Y: 0.1189696341753006
+        Z: 0.4057367146015167
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2697962522506714
+      Pitch: 0.10479649901390076
       Target Frame: <Fixed Frame>
-      Yaw: 5.108528137207031
+      Yaw: 5.323526859283447
     Saved: ~
 Window Geometry:
   Displays:
@@ -255,5 +327,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 659
-  Y: 27
+  X: 992
+  Y: 65

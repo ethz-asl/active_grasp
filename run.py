@@ -47,10 +47,12 @@ class GraspController:
         target.translation[2] += 0.1
         self.target_pose_pub.publish(to_pose_msg(target))
         rospy.sleep(2.0)
+        self.gripper.move(0.08)
+        rospy.sleep(1.0)
 
 
 def main(args):
-    rospy.init_node("panda_grasp")
+    rospy.init_node("active_grasp")
     policy = get_policy(args.policy)
     gc = GraspController(policy, args.rate)
     gc.run()

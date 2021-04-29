@@ -1,0 +1,5 @@
+active_grasp:
+  frame_id: task
+  camera_name: cam
+vgn:
+  model: $(find vgn)/data/models/vgn_conv.pth

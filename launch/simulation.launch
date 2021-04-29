@@ -1,9 +1,10 @@
 <?xml version="1.0" ?>
 <launch>
   <!-- Arguments -->
-  <arg name="rviz" default="false" />
+  <arg name="rviz" default="true" />
 
   <!-- Load parameters. -->
+  <rosparam command="load" file="$(find active_grasp)/config/active_grasp.yaml" subst_value="true" />
   <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/urdfs/panda_arm_hand.urdf.xacro" />
 
   <!-- Bringup the robot -->
