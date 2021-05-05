@@ -4,7 +4,6 @@ import cv_bridge
 import numpy as np
 import rospy
 import scipy.interpolate
-import torch
 
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import Image, CameraInfo
@@ -14,8 +13,7 @@ from robot_utils.ros.conversions import *
 from robot_utils.ros.tf import TransformTree
 from robot_utils.perception import *
 from vgn import vis
-from vgn.detection import *
-from vgn.grasp import from_voxel_coordinates
+from vgn.detection import VGN, compute_grasps
 
 
 def get_policy(name):
@@ -29,14 +27,17 @@ def get_policy(name):
 
 class Policy:
     def __init__(self):
-        self.frame_id = rospy.get_param("~frame_id")
+        params = rospy.get_param("active_grasp")
+
+        self.frame_id = params["frame_id"]
 
         # Robot
         self.tf_tree = TransformTree()
+        self.H_EE_G = Transform.from_list(params["ee_grasp_offset"])
         self.target_pose_pub = rospy.Publisher("/target", Pose, queue_size=10)
 
         # Camera
-        camera_name = rospy.get_param("~camera_name")
+        camera_name = params["camera_name"]
         self.cam_frame_id = camera_name + "_optical_frame"
         self.cv_bridge = cv_bridge.CvBridge()
         depth_topic = camera_name + "/depth/image_raw"
@@ -45,9 +46,8 @@ class Policy:
         self.intrinsic = from_camera_info_msg(msg)
 
         # VGN
-        model_path = Path(rospy.get_param("vgn/model"))
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.net = load_network(model_path, self.device)
+        params = rospy.get_param("vgn")
+        self.vgn = VGN(Path(params["model"]))
 
         rospy.sleep(1.0)
         self.H_B_T = self.tf_tree.lookup("panda_link0", self.frame_id, rospy.Time.now())
@@ -99,37 +99,27 @@ class FixedTrajectoryBaseline(Policy):
             map_cloud = self.tsdf.get_map_cloud()
             points = np.asarray(map_cloud.points)
             distances = np.asarray(map_cloud.colors)[:, 0]
-            tsdf_grid = grid_from_cloud(points, distances, self.tsdf.voxel_size)
+            tsdf_grid = create_grid_from_map_cloud(
+                points, distances, self.tsdf.voxel_size
+            )
+            out = self.vgn.predict(tsdf_grid)
+            grasps = compute_grasps(out, voxel_size=self.tsdf.voxel_size)
 
-            vis.draw_tsdf(tsdf_grid.squeeze(), self.tsdf.voxel_size)
-
-            qual, rot, width = predict(tsdf_grid, self.net, self.device)
-            qual, rot, width = process(tsdf_grid, qual, rot, width)
-            grasps, scores = select(qual.copy(), rot, width)
-            grasps, scores = np.asarray(grasps), np.asarray(scores)
-
-            grasps = [from_voxel_coordinates(g, self.tsdf.voxel_size) for g in grasps]
-
-            # Select the highest grasp
-            heights = np.empty(len(grasps))
-            for i, grasp in enumerate(grasps):
-                heights[i] = grasp.pose.translation[2]
-            idx = np.argmax(heights)
-            grasp, score = grasps[idx], scores[idx]
-            vis.draw_grasps(grasps, scores, 0.05)
+            # Visualize
+            vis.draw_tsdf(tsdf_grid, self.tsdf.voxel_size)
+            vis.draw_grasps(grasps, 0.05)
 
             # Ensure that the camera is pointing forward.
+            grasp = grasps[0]
             rot = grasp.pose.rotation
             axis = rot.as_matrix()[:, 0]
             if axis[0] < 0:
                 grasp.pose.rotation = rot * Rotation.from_euler("z", np.pi)
 
-            # Add offset between grasp frame and panda_hand frame
-            T_task_grasp = grasp.pose * Transform(
-                Rotation.identity(), np.r_[0.0, 0.0, -0.06]
-            )
-
-            self.best_grasp = self.H_B_T * T_task_grasp
+            # Compute target pose of the EE
+            H_T_G = grasp.pose
+            H_B_EE = self.H_B_T * H_T_G * self.H_EE_G.inv()
+            self.best_grasp = H_B_EE
             self.done = True
             return
 
