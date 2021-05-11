@@ -4,7 +4,7 @@ from robot_utils.btsim import *
 from robot_utils.spatial import Rotation, Transform
 
 
-class BtPandaEnv(BtBaseEnv):
+class BtPandaSim(BtSim):
     def __init__(self, gui=True, sleep=True):
         super().__init__(gui, sleep)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)

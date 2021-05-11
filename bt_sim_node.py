@@ -16,7 +16,7 @@ from robot_utils.controllers import CartesianPoseController
 from robot_utils.ros.conversions import *
 from robot_utils.ros.tf import TransformTree
 
-from simulation import BtPandaEnv
+from simulation import BtPandaSim
 
 CONTROLLER_UPDATE_RATE = 60
 JOINT_PUBLISH_RATE = 60
@@ -25,7 +25,7 @@ CAM_PUBLISH_RATE = 5
 
 class BtSimNode:
     def __init__(self, gui):
-        self.sim = BtPandaEnv(gui=gui, sleep=False)
+        self.sim = BtPandaSim(gui=gui, sleep=False)
         self.controller = CartesianPoseController(self.sim.arm)
         self.cv_bridge = cv_bridge.CvBridge()
         self.tf_tree = TransformTree()
