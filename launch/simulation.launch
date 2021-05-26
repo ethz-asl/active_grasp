@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <launch>
   <!-- Arguments -->
-  <arg name="rviz" default="true" />
+  <arg name="launch_rviz" default="true" />
 
   <!-- Load parameters. -->
   <rosparam command="load" file="$(find active_grasp)/config/active_grasp.yaml" subst_value="true" />
@@ -12,5 +12,5 @@
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
   <!-- Visualize the robot. -->
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/panda_visualization.rviz" if="$(arg rviz)" />
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/panda_visualization.rviz" if="$(arg launch_rviz)" />
 </launch>

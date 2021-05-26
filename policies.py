@@ -1,17 +1,16 @@
-from pathlib import Path
-
 import cv_bridge
 import numpy as np
+from pathlib import Path
 import rospy
 import scipy.interpolate
 
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import Image, CameraInfo
 
-from robot_utils.spatial import Rotation, Transform
-from robot_utils.ros.conversions import *
-from robot_utils.ros.tf import TransformTree
-from robot_utils.perception import *
+from robot_tools.spatial import Rotation, Transform
+from robot_tools.ros.conversions import *
+from robot_tools.ros.tf import TransformTree
+from robot_tools.perception import *
 from vgn import vis
 from vgn.detection import VGN, compute_grasps
 
@@ -21,6 +20,8 @@ def get_policy(name):
         return SingleViewBaseline()
     elif name == "fixed-trajectory":
         return FixedTrajectoryBaseline()
+    elif name == "mvp":
+        return MultiViewPicking()
     else:
         raise ValueError("{} policy does not exist.".format(name))
 
@@ -36,13 +37,13 @@ class Policy:
         self.ee_frame_id = params["ee_frame_id"]
         self.tf = TransformTree()
         self.H_EE_G = Transform.from_list(params["ee_grasp_offset"])
-        self.target_pose_pub = rospy.Publisher("/target", Pose, queue_size=10)
+        self.target_pose_pub = rospy.Publisher("/cmd", Pose, queue_size=10)
 
         # Camera
-        camera_name = params["camera_name"]
-        self.cam_frame_id = camera_name + "_optical_frame"
-        depth_topic = camera_name + "/depth/image_raw"
-        msg = rospy.wait_for_message(camera_name + "/depth/camera_info", CameraInfo)
+        self.cam_frame_id = rospy.get_param("~camera/frame_id")
+        info_topic = rospy.get_param("~camera/info_topic")
+        depth_topic = rospy.get_param("~camera/depth_topic")
+        msg = rospy.wait_for_message(info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
         self.cv_bridge = cv_bridge.CvBridge()
 
@@ -50,14 +51,11 @@ class Policy:
         self.tsdf = UniformTSDFVolume(0.3, 40)
 
         # VGN
-        params = rospy.get_param("vgn")
-        self.vgn = VGN(Path(params["model"]))
+        self.vgn = VGN(Path(rospy.get_param("vgn/model")))
 
         rospy.sleep(1.0)
         self.H_B_T = self.tf.lookup(self.base_frame_id, self.frame_id, rospy.Time.now())
         rospy.Subscriber(depth_topic, Image, self.sensor_cb, queue_size=1)
-
-        vis.draw_workspace(0.3)
 
     def sensor_cb(self, msg):
         self.last_depth_img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
@@ -65,21 +63,17 @@ class Policy:
             self.cam_frame_id, self.frame_id, msg.header.stamp, rospy.Duration(0.1)
         )
 
-    def get_tsdf_grid(self):
-        map_cloud = self.tsdf.get_map_cloud()
-        points = np.asarray(map_cloud.points)
-        distances = np.asarray(map_cloud.colors)[:, 0]
-        return create_grid_from_map_cloud(points, distances, self.tsdf.voxel_size)
-
     def plan_best_grasp(self):
-        tsdf_grid = self.get_tsdf_grid()
+        tsdf_grid = self.tsdf.get_grid()
         out = self.vgn.predict(tsdf_grid)
-        grasps = compute_grasps(out, voxel_size=self.tsdf.voxel_size)
+        grasps = compute_grasps(self.tsdf.voxel_size, out)
 
         vis.draw_tsdf(tsdf_grid, self.tsdf.voxel_size)
         vis.draw_grasps(grasps, 0.05)
 
         # Ensure that the camera is pointing forward.
+        if len(grasps) == 0:
+            return
         grasp = grasps[0]
         rot = grasp.pose.rotation
         axis = rot.as_matrix()[:, 0]
@@ -156,3 +150,7 @@ class FixedTrajectoryBaseline(Policy):
             self.origin + np.r_[self.radius * np.cos(t), self.radius * np.sin(t), 0.0]
         )
         self.target_pose_pub.publish(to_pose_msg(self.target))
+
+
+class MultiViewPicking(Policy):
+    pass

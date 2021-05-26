@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-import argparse
-
 import actionlib
+import argparse
 import cv_bridge
 import numpy as np
 import rospy
@@ -12,43 +11,81 @@ from geometry_msgs.msg import Pose
 from sensor_msgs.msg import JointState, Image, CameraInfo
 import std_srvs.srv
 
-from robot_utils.controllers import CartesianPoseController
-from robot_utils.ros.conversions import *
-from robot_utils.ros.tf import TransformTree
-
-from simulation import BtPandaSim
-
-CONTROLLER_UPDATE_RATE = 60
-JOINT_PUBLISH_RATE = 60
-CAM_PUBLISH_RATE = 5
+from robot_tools.controllers import CartesianPoseController
+from robot_tools.ros.conversions import *
+from robot_tools.ros.tf import TransformTree
+from simulation import Simulation
 
 
 class BtSimNode:
     def __init__(self, gui):
-        self.sim = BtPandaSim(gui=gui, sleep=False)
+        self.sim = Simulation(gui=gui, sleep=False)
         self.controller = CartesianPoseController(self.sim.arm)
+
+        self.controller_update_rate = 60
+        self.joint_state_publish_rate = 60
+        self.camera_publish_rate = 5
+
         self.cv_bridge = cv_bridge.CvBridge()
         self.tf_tree = TransformTree()
-        self.reset_server = rospy.Service("reset", std_srvs.srv.Trigger, self.reset)
+
+        self.setup_robot_topics()
+        self.setup_camera_topics()
+        self.setup_gripper_actions()
+        self.broadcast_transforms()
+
+        rospy.Service("reset", std_srvs.srv.Trigger, self.reset)
+        self.step_cnt = 0
+        self.reset_requested = False
+
+    def setup_robot_topics(self):
+        self.joint_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
+        rospy.Subscriber("cmd", Pose, self.target_pose_cb)
+
+    def target_pose_cb(self, msg):
+        self.controller.set_target(from_pose_msg(msg))
+
+    def setup_camera_topics(self):
+        self.cam_info_msg = to_camera_info_msg(self.sim.camera.intrinsic)
+        self.cam_info_msg.header.frame_id = "cam_optical_frame"
+        self.cam_info_pub = rospy.Publisher(
+            "/cam/depth/camera_info",
+            CameraInfo,
+            queue_size=10,
+        )
+        self.depth_pub = rospy.Publisher("/cam/depth/image_raw", Image, queue_size=10)
+
+    def setup_gripper_actions(self):
         self.move_server = actionlib.SimpleActionServer(
-            "move",
+            "/franka_gripper/move",
             franka_gripper.msg.MoveAction,
             self.move,
             False,
         )
-        self.joint_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
-        self.cam_info_pub = rospy.Publisher(
-            "/cam/depth/camera_info", CameraInfo, queue_size=10
-        )
-        self.cam_info_msg = to_camera_info_msg(self.sim.camera.info)
-        self.cam_info_msg.header.frame_id = "cam_optical_frame"
-        self.depth_pub = rospy.Publisher("/cam/depth/image_raw", Image, queue_size=10)
-        rospy.Subscriber("target", Pose, self.target_pose_cb)
-        self.step_cnt = 0
-        self.reset_requested = False
         self.move_server.start()
-        T_base_task = Transform(Rotation.identity(), np.r_[0.2, -0.15, 0.1])
-        self.tf_tree.broadcast_static(T_base_task, "panda_link0", "task")
+
+    def move(self, goal):
+        self.sim.gripper.move(goal.width)
+        self.move_server.set_succeeded()
+
+    def broadcast_transforms(self):
+        msgs = []
+        msg = geometry_msgs.msg.TransformStamped()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "world"
+        msg.child_frame_id = "panda_link0"
+        msg.transform = to_transform_msg(self.sim.T_W_B)
+        msgs.append(msg)
+
+        msg = geometry_msgs.msg.TransformStamped()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "world"
+        msg.child_frame_id = "task"
+        msg.transform = to_transform_msg(Transform.translation(self.sim.origin))
+
+        msgs.append(msg)
+
+        self.tf_tree.static_broadcaster.sendTransform(msgs)
 
     def reset(self, req):
         self.reset_requested = True
@@ -69,11 +106,11 @@ class BtSimNode:
             rate.sleep()
 
     def handle_updates(self):
-        if self.step_cnt % int(self.sim.rate / CONTROLLER_UPDATE_RATE) == 0:
+        if self.step_cnt % int(self.sim.rate / self.controller_update_rate) == 0:
             self.controller.update()
-        if self.step_cnt % int(self.sim.rate / JOINT_PUBLISH_RATE) == 0:
+        if self.step_cnt % int(self.sim.rate / self.joint_state_publish_rate) == 0:
             self.publish_joint_state()
-        if self.step_cnt % int(self.sim.rate / CAM_PUBLISH_RATE) == 0:
+        if self.step_cnt % int(self.sim.rate / self.camera_publish_rate) == 0:
             self.publish_cam_info()
             self.publish_cam_imgs()
 
@@ -95,17 +132,10 @@ class BtSimNode:
         self.cam_info_pub.publish(self.cam_info_msg)
 
     def publish_cam_imgs(self):
-        _, depth = self.sim.camera.update()
+        _, depth = self.sim.camera.get_image()
         depth_msg = self.cv_bridge.cv2_to_imgmsg(depth)
         depth_msg.header.stamp = rospy.Time.now()
         self.depth_pub.publish(depth_msg)
-
-    def move(self, goal):
-        self.sim.gripper.move(goal.width)
-        self.move_server.set_succeeded()
-
-    def target_pose_cb(self, msg):
-        self.controller.set_target(from_pose_msg(msg))
 
 
 def main(args):
