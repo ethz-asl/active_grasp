@@ -1,5 +1,6 @@
 active_grasp:
   frame_id: task
+  length: 0.3
   base_frame_id: panda_link0
   ee_frame_id: panda_hand
   ee_grasp_offset: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.065]

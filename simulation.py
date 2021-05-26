@@ -37,9 +37,9 @@ class Simulation(BtManipulationSim):
 
     def reset(self):
         self.remove_all_objects()
+        self.set_initial_arm_configuration()
         urdfs = np.random.choice(self.urdfs, 4)
         self.add_random_arrangement(urdfs, np.r_[self.origin[:2], 0.625], self.length)
-        self.set_initial_arm_configuration()
 
     def set_initial_arm_configuration(self):
         q = self.arm.configurations["ready"]
