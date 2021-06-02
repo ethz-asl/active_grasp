@@ -11,6 +11,9 @@
   <node pkg="active_grasp" type="bt_sim_node.py" name="simulation" args="--gui" output="screen" />
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
+  <!-- Launch MoveIt -->
+  <!-- <include file="$(find panda_moveit_config)/launch/move_group.launch" /> -->
+
   <!-- Visualize the robot. -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/panda_visualization.rviz" if="$(arg launch_rviz)" />
 </launch>

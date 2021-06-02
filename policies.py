@@ -10,8 +10,9 @@ import std_srvs.srv
 
 from robot_tools.spatial import Rotation, Transform
 from robot_tools.ros.conversions import *
+from robot_tools.ros.control import ControllerManagerClient
 from robot_tools.ros.panda import PandaGripperClient
-from robot_tools.ros.tf import TransformTree
+from robot_tools.ros.tf import TF2Client
 from robot_tools.perception import *
 from vgn import vis
 from vgn.detection import VGN, compute_grasps
@@ -34,7 +35,7 @@ class BaseController:
         self.length = rospy.get_param("~length")
 
         self.cv_bridge = cv_bridge.CvBridge()
-        self.tf = TransformTree()
+        self.tf = TF2Client()
 
         self.reset_client = rospy.ServiceProxy("/reset", std_srvs.srv.Trigger)
 
@@ -49,8 +50,11 @@ class BaseController:
         self.base_frame_id = rospy.get_param("~base_frame_id")
         self.ee_frame_id = rospy.get_param("~ee_frame_id")
         self.ee_grasp_offset = Transform.from_list(rospy.get_param("~ee_grasp_offset"))
-        self.target_pose_pub = rospy.Publisher("/cmd", Pose, queue_size=10)
+        self.target_pose_pub = rospy.Publisher("/command", Pose, queue_size=10)
         self.gripper = PandaGripperClient()
+
+    def send_pose_command(self, target):
+        self.target_pose_pub.publish(to_pose_msg(target))
 
     def setup_camera_connection(self):
         self.cam_frame_id = rospy.get_param("~camera/frame_id")
@@ -78,6 +82,7 @@ class BaseController:
         self.execute_grasp()
 
     def reset(self):
+        vis.clear()
         req = std_srvs.srv.TriggerRequest()
         self.reset_client(req)
         rospy.sleep(1.0)  # wait for states to be updated
@@ -104,13 +109,11 @@ class BaseController:
         target = self.T_B_O * grasp.pose * self.ee_grasp_offset.inv()
 
         self.gripper.move(0.08)
-        rospy.sleep(1.0)  # TODO properly implement the simulated move server
-        self.target_pose_pub.publish(to_pose_msg(target))
-        rospy.sleep(2.0)
+        self.send_pose_command(target)
+        rospy.sleep(3.0)
         self.gripper.move(0.0)
-        rospy.sleep(1.0)  # TODO
         target.translation[2] += 0.3
-        self.target_pose_pub.publish(to_pose_msg(target))
+        self.send_pose_command(target)
         rospy.sleep(2.0)
 
     def predict_best_grasp(self):
@@ -176,8 +179,30 @@ class FixedTrajectoryBaseline(BaseController):
                 self.center
                 + np.r_[self.radius * np.cos(t), self.radius * np.sin(t), 0.0]
             )
-            self.target_pose_pub.publish(to_pose_msg(self.target))
+            self.send_pose_command(self.target)
+
+
+class Map:
+    def __init__(self):
+        pass
+
+    def update(self):
+        pass
 
 
 class MultiViewPicking(BaseController):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.rate = 5
+        self.grid = np.zeros((40, 40, 40))
+
+    def reset(self):
+        super().reset()
+        self.tic = rospy.Time.now()
+        timeout = rospy.Duration(0.1)
+        x0 = self.tf.lookup(self.base_frame_id, self.ee_frame_id, self.tic, timeout)
+        self.center = np.r_[x0.translation[0] + self.radius, x0.translation[1:]]
+        self.target = x0
+
+    def update(self):
+        pass
