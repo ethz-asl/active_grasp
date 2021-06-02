@@ -10,6 +10,11 @@ from robot_tools.utils import scan_dir_for_urdfs
 class Simulation(BtManipulationSim):
     def __init__(self, gui=True, sleep=True):
         super().__init__(gui, sleep)
+
+        self.rate = 60
+        self.dt = 1.0 / self.rate
+        p.setPhysicsEngineParameter(fixedTimeStep=self.dt, numSubSteps=4)
+
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
 

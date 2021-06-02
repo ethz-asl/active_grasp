@@ -105,7 +105,7 @@ class BtSimNode:
     def handle_updates(self):
         if self.step_cnt % int(self.sim.rate / self.controller_update_rate) == 0:
             self.cartesian_pose_controller.update()
-            self.gripper_interface.update(1.0 / 60.0)
+            self.gripper_interface.update(1.0 / self.controller_update_rate)
         if self.step_cnt % int(self.sim.rate / self.joint_state_publish_rate) == 0:
             self.publish_joint_state()
         if self.step_cnt % int(self.sim.rate / self.camera_publish_rate) == 0:
