@@ -12,6 +12,7 @@ def create_parser():
         choices=[
             "single-view",
             "fixed-trajectory",
+            "mvp",
         ],
     )
     return parser

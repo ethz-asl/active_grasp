@@ -2,19 +2,13 @@ from pathlib import Path
 import pybullet as p
 import rospkg
 
-from robot_tools.bullet import *
-from robot_tools.spatial import Rotation, Transform
-from robot_tools.utils import scan_dir_for_urdfs
+from robot_utils.bullet import *
+from robot_utils.spatial import Rotation, Transform
 
 
 class Simulation(BtManipulationSim):
-    def __init__(self, gui=True, sleep=True):
-        super().__init__(gui, sleep)
-
-        self.rate = 60
-        self.dt = 1.0 / self.rate
-        p.setPhysicsEngineParameter(fixedTimeStep=self.dt, numSubSteps=4)
-
+    def __init__(self, gui=True):
+        super().__init__(gui=gui, sleep=False)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
 
@@ -25,7 +19,7 @@ class Simulation(BtManipulationSim):
     def find_object_urdfs(self):
         rospack = rospkg.RosPack()
         root = Path(rospack.get_path("vgn")) / "data/urdfs/packed/test"
-        self.urdfs = scan_dir_for_urdfs(root)
+        self.urdfs = [str(f) for f in root.iterdir() if f.suffix == ".urdf"]
 
     def add_table(self):
         p.loadURDF("plane.urdf")

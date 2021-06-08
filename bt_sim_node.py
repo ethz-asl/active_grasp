@@ -5,30 +5,28 @@ import argparse
 import cv_bridge
 import numpy as np
 import rospy
+import tf2_ros
 
 import control_msgs.msg
-import controller_manager_msgs.srv
 import franka_gripper.msg
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import JointState, Image, CameraInfo
 import std_srvs.srv
 
-from robot_tools.controllers import CartesianPoseController
-from robot_tools.ros.conversions import *
-from robot_tools.ros.tf import TF2Client
+from robot_utils.controllers import CartesianPoseController
+from robot_utils.ros.conversions import *
 from simulation import Simulation
 
 
 class BtSimNode:
     def __init__(self, gui):
-        self.sim = Simulation(gui=gui, sleep=False)
+        self.sim = Simulation(gui=gui)
 
         self.controller_update_rate = 60
         self.joint_state_publish_rate = 60
         self.camera_publish_rate = 5
 
         self.cv_bridge = cv_bridge.CvBridge()
-        self.tf_tree = TF2Client()
 
         self.setup_robot_topics()
         self.setup_camera_topics()
@@ -44,13 +42,11 @@ class BtSimNode:
         self.joint_pub = rospy.Publisher("joint_states", JointState, queue_size=10)
 
     def setup_controllers(self):
-        self.cartesian_pose_controller = CartesianPoseController(
-            self.sim.arm, stopped=False
-        )
+        self.cartesian_pose_controller = CartesianPoseController(self.sim.arm)
         rospy.Subscriber("command", Pose, self.target_pose_cb)
 
     def target_pose_cb(self, msg):
-        self.cartesian_pose_controller.set_target(from_pose_msg(msg))
+        self.cartesian_pose_controller.x_d = from_pose_msg(msg)
 
     def setup_gripper_interface(self):
         self.gripper_interface = GripperInterface(self.sim.gripper)
@@ -66,6 +62,8 @@ class BtSimNode:
         self.depth_pub = rospy.Publisher("/cam/depth/image_raw", Image, queue_size=10)
 
     def broadcast_transforms(self):
+        self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
+
         msgs = []
         msg = geometry_msgs.msg.TransformStamped()
         msg.header.stamp = rospy.Time.now()
@@ -82,13 +80,13 @@ class BtSimNode:
 
         msgs.append(msg)
 
-        self.tf_tree.static_broadcaster.sendTransform(msgs)
+        self.static_broadcaster.sendTransform(msgs)
 
     def reset(self, req):
         self.reset_requested = True
         rospy.sleep(1.0)  # wait for the latest sim step to finish
         self.sim.reset()
-        self.cartesian_pose_controller.set_target(self.sim.arm.pose())
+        self.cartesian_pose_controller.x_d = self.sim.arm.pose()
         self.step_cnt = 0
         self.reset_requested = False
         return std_srvs.srv.TriggerResponse(success=True)
