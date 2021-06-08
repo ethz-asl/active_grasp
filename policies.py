@@ -52,6 +52,7 @@ class BaseController:
         self.reset()
         self.explore()
         self.execute_grasp()
+        # self.release_object()
 
     def reset(self):
         self._reset_env()
@@ -73,26 +74,35 @@ class BaseController:
         if not self.best_grasp:
             return
 
-        grasp = self.best_grasp
+        self.gripper.move(0.08)
 
         # Ensure that the camera is pointing forward.
-        rot = grasp.pose.rotation
+        T_O_G = self.best_grasp.pose
+        rot = T_O_G.rotation
         if rot.as_matrix()[:, 0][0] < 0:
-            grasp.pose.rotation = rot * Rotation.from_euler("z", np.pi)
-        target = self.T_B_O * grasp.pose * self._ee_grasp_offset.inv()
+            T_O_G.rotation = rot * Rotation.from_euler("z", np.pi)
 
-        self.gripper.move(0.08)
-        self._send_pose_command(target)
+        # Move to an initial pose offset.
+        target = T_O_G * Transform.translation([0, 0, -0.05]) * self.T_G_EE
+        self._send_target_pose(target)
         rospy.sleep(3.0)
+
+        # Approach grasp pose.
+        self._send_target_pose(T_O_G * self.T_G_EE)
+        rospy.sleep(1.0)
+
+        # Close the fingers.
         self.gripper.move(0.0)
-        target.translation[2] += 0.3
-        self._send_pose_command(target)
+
+        # Lift the object.
+        target = Transform.translation([0, 0, 0.2]) * T_O_G * self.T_G_EE
+        self._send_target_pose(target)
         rospy.sleep(2.0)
 
     def _setup_robot_connection(self):
         self.base_frame = rospy.get_param("~base_frame_id")
         self.ee_frame = rospy.get_param("~ee_frame_id")
-        self._ee_grasp_offset = Transform.from_list(rospy.get_param("~ee_grasp_offset"))
+        self.T_G_EE = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
         self.target_pose_pub = rospy.Publisher("/command", PoseStamped, queue_size=10)
         self.gripper = PandaGripperClient()
 
@@ -180,10 +190,11 @@ class BaseController:
         vgn.vis.draw_grasps(grasps, 0.05)
         return grasps[0] if len(grasps) > 0 else None
 
-    def _send_pose_command(self, target):
+    def _send_target_pose(self, target):
+        """Target is expected to be given w.r.t. the task frame."""
         msg = PoseStamped()
         msg.header.frame_id = self.base_frame
-        msg.pose = to_pose_msg(target)
+        msg.pose = to_pose_msg(self.T_B_O * target)
         self.target_pose_pub.publish(msg)
 
 
@@ -219,7 +230,7 @@ class FixedTrajectoryBaseline(BaseController):
 
     def _init_policy(self):
         self.tic = rospy.Time.now()
-        x0 = tf.lookup(self.base_frame, self.ee_frame)
+        x0 = tf.lookup(self.frame, self.ee_frame)
         self.center = np.r_[x0.translation[0] + self.radius, x0.translation[1:]]
         self.target = x0
 
@@ -238,7 +249,7 @@ class FixedTrajectoryBaseline(BaseController):
                 self.center
                 + np.r_[self.radius * np.cos(t), self.radius * np.sin(t), 0.0]
             )
-            self._send_pose_command(self.target)
+            self._send_target_pose(self.target)
 
             # Draw
             self._draw_scene_cloud()
