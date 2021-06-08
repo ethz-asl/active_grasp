@@ -4,7 +4,7 @@ from pathlib import Path
 import rospy
 import scipy.interpolate
 
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image, CameraInfo
 import std_srvs.srv
 from visualization_msgs.msg import Marker, MarkerArray
@@ -93,7 +93,7 @@ class BaseController:
         self.base_frame = rospy.get_param("~base_frame_id")
         self.ee_frame = rospy.get_param("~ee_frame_id")
         self._ee_grasp_offset = Transform.from_list(rospy.get_param("~ee_grasp_offset"))
-        self.target_pose_pub = rospy.Publisher("/command", Pose, queue_size=10)
+        self.target_pose_pub = rospy.Publisher("/command", PoseStamped, queue_size=10)
         self.gripper = PandaGripperClient()
 
     def _setup_camera_connection(self):
@@ -181,7 +181,10 @@ class BaseController:
         return grasps[0] if len(grasps) > 0 else None
 
     def _send_pose_command(self, target):
-        self.target_pose_pub.publish(to_pose_msg(target))
+        msg = PoseStamped()
+        msg.header.frame_id = self.base_frame
+        msg.pose = to_pose_msg(target)
+        self.target_pose_pub.publish(msg)
 
 
 class SingleViewBaseline(BaseController):

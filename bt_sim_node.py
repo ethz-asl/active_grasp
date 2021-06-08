@@ -9,7 +9,7 @@ import tf2_ros
 
 import control_msgs.msg
 import franka_gripper.msg
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState, Image, CameraInfo
 import std_srvs.srv
 
@@ -43,10 +43,11 @@ class BtSimNode:
 
     def setup_controllers(self):
         self.cartesian_pose_controller = CartesianPoseController(self.sim.arm)
-        rospy.Subscriber("command", Pose, self.target_pose_cb)
+        rospy.Subscriber("command", PoseStamped, self.target_pose_cb)
 
     def target_pose_cb(self, msg):
-        self.cartesian_pose_controller.x_d = from_pose_msg(msg)
+        assert msg.header.frame_id == self.sim.arm.base_frame
+        self.cartesian_pose_controller.x_d = from_pose_msg(msg.pose)
 
     def setup_gripper_interface(self):
         self.gripper_interface = GripperInterface(self.sim.gripper)
