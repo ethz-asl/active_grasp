@@ -19,17 +19,18 @@ class AABBox:
         self.min = bbox_min
         self.max = bbox_max
 
-    @classmethod
-    def from_msg(cls, msg):
-        aabb_min = from_point_msg(msg.min)
-        aabb_max = from_point_msg(msg.max)
-        return cls(aabb_min, aabb_max)
-
-    def to_msg(self):
-        msg = active_grasp.msg.AABBox()
-        msg.min = to_point_msg(self.min)
-        msg.max = to_point_msg(self.max)
-        return msg
-
     def is_inside(self, p):
         return np.all(p > self.min) and np.all(p < self.max)
+
+
+def from_bbox_msg(msg):
+    aabb_min = from_point_msg(msg.min)
+    aabb_max = from_point_msg(msg.max)
+    return AABBox(aabb_min, aabb_max)
+
+
+def to_bbox_msg(bbox):
+    msg = active_grasp.msg.AABBox()
+    msg.min = to_point_msg(bbox.min)
+    msg.max = to_point_msg(bbox.max)
+    return msg

@@ -1,21 +1,23 @@
 import argparse
 import rospy
-import std_srvs.srv as std_srvs
 
 
+from active_grasp.srv import Reset, ResetRequest
 from controller import GraspController
 from policies import get_policy
+from utils import *
 
 
 class SimGraspController(GraspController):
     def __init__(self, policy):
         super().__init__(policy)
-        self.reset_sim = rospy.ServiceProxy("/reset", std_srvs.Trigger)
+        self.reset_sim = rospy.ServiceProxy("reset", Reset)
 
     def reset(self):
-        req = std_srvs.TriggerRequest()
-        self.reset_sim(req)
+        req = ResetRequest()
+        res = self.reset_sim(req)
         rospy.sleep(1.0)  # wait for states to be updated
+        return from_bbox_msg(res.bbox)
 
 
 def create_parser():

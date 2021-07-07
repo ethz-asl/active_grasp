@@ -14,6 +14,7 @@ import tf2_ros
 import active_grasp.srv
 from robot_utils.ros.conversions import *
 from simulation import Simulation
+from utils import *
 
 
 class BtSimNode:
@@ -46,7 +47,7 @@ class BtSimNode:
         self.reset_requested = True
         rospy.sleep(1.0)  # wait for the latest sim step to finish
         bbox = self.sim.reset()
-        res = active_grasp.srv.ResetResponse(bbox.to_msg())
+        res = active_grasp.srv.ResetResponse(to_bbox_msg(bbox))
         self.step_cnt = 0
         self.reset_requested = False
         return res

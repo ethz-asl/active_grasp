@@ -18,16 +18,16 @@ class GraspController:
         self.T_G_EE = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
 
     def run(self):
-        self.reset()
-        grasp = self.explore()
+        bbox = self.reset()
+        grasp = self.explore(bbox)
         if grasp:
             self.execute_grasp(grasp)
 
     def reset(self):
         raise NotImplementedError
 
-    def explore(self):
-        self.policy.activate()
+    def explore(self, bbox):
+        self.policy.activate(bbox)
         r = rospy.Rate(self.policy.rate)
         while True:
             cmd = self.policy.update()

@@ -5,13 +5,13 @@ import rospkg
 from robot_utils.bullet import *
 from robot_utils.controllers import CartesianPoseController
 from robot_utils.spatial import Rotation, Transform
-from utils import AABBox
+from utils import *
 
 
 class Simulation(BtSim):
     def __init__(self, gui=True):
         super().__init__(gui=gui, sleep=False)
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
 
         self.object_uids = []
@@ -111,6 +111,8 @@ class Simulation(BtSim):
 
     def get_target_bbox(self, uid):
         aabb_min, aabb_max = p.getAABB(uid)
+        aabb_min = np.array(aabb_min) - self.origin
+        aabb_max = np.array(aabb_max) - self.origin
         return AABBox(aabb_min, aabb_max)
 
 

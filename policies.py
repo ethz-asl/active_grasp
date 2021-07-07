@@ -2,6 +2,7 @@ import cv_bridge
 import numpy as np
 from pathlib import Path
 import rospy
+from rospy import Publisher
 import sensor_msgs.msg
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -12,7 +13,7 @@ from robot_utils.ros.rviz import *
 from robot_utils.spatial import Transform
 from vgn.detection import VGN, compute_grasps
 from vgn.perception import UniformTSDFVolume
-import vgn.vis
+from vgn.utils import *
 
 
 def get_policy(name):
@@ -25,8 +26,8 @@ def get_policy(name):
 class BasePolicy:
     def __init__(self):
         self.cv_bridge = cv_bridge.CvBridge()
-        self.tsdf = UniformTSDFVolume(0.3, 40)
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
+        self.finger_depth = 0.05
 
         self.load_parameters()
         self.lookup_transforms()
@@ -64,9 +65,16 @@ class BasePolicy:
         )
 
     def connect_to_rviz(self):
-        self.path_pub = rospy.Publisher("path", MarkerArray, queue_size=1, latch=True)
+        self.bbox_pub = Publisher("bbox", Marker, queue_size=1, latch=True)
+        self.cloud_pub = Publisher("cloud", PointCloud2, queue_size=1, latch=True)
+        self.path_pub = Publisher("path", MarkerArray, queue_size=1, latch=True)
+        self.grasps_pub = Publisher("grasps", MarkerArray, queue_size=1, latch=True)
 
-    def activate(self):
+    def activate(self, bbox):
+        self.clear_grasps()
+        self.bbox = bbox
+        self.draw_bbox()
+        self.tsdf = UniformTSDFVolume(0.3, 40)
         self.viewpoints = []
         self.done = False
         self.best_grasp = None  # grasp pose defined w.r.t. the robot's base frame
@@ -86,13 +94,38 @@ class BasePolicy:
         tsdf_grid = self.tsdf.get_grid()
         out = self.vgn.predict(tsdf_grid)
         score_fn = lambda g: g.pose.translation[2]
-        grasps = compute_grasps(self.tsdf.voxel_size, out, score_fn)
-        vgn.vis.draw_grasps(grasps, 0.05)
+        grasps = compute_grasps(self.tsdf.voxel_size, out, score_fn, max_filter_size=3)
+        grasps = self.filter_grasps_on_target_object(grasps)
+        self.draw_grasps(grasps)
         return self.T_B_task * grasps[0].pose if len(grasps) > 0 else None
+
+    def filter_grasps_on_target_object(self, grasps):
+        return [
+            g
+            for g in grasps
+            if self.bbox.is_inside(
+                g.pose.rotation.apply([0, 0, 0.05]) + g.pose.translation
+            )
+        ]
+
+    def clear_grasps(self):
+        self.grasps_pub.publish(DELETE_MARKER_ARRAY_MSG)
+
+    def draw_bbox(self):
+        pose = Transform.translation((self.bbox.min + self.bbox.max) / 2.0)
+        scale = self.bbox.max - self.bbox.min
+        color = np.r_[0.8, 0.2, 0.2, 0.6]
+        msg = create_marker(Marker.CUBE, self.task_frame, pose, scale, color)
+        self.bbox_pub.publish(msg)
 
     def draw_scene_cloud(self):
         cloud = self.tsdf.get_scene_cloud()
-        vgn.vis.draw_points(np.asarray(cloud.points))
+        msg = to_cloud_msg(self.task_frame, np.asarray(cloud.points))
+        self.cloud_pub.publish(msg)
+
+    def draw_grasps(self, grasps):
+        msg = create_grasp_marker_array(self.task_frame, grasps, self.finger_depth)
+        self.grasps_pub.publish(msg)
 
     def draw_camera_path(self):
         identity = Transform.identity()
@@ -129,6 +162,5 @@ class SingleViewBaseline(BasePolicy):
     def update(self):
         self.integrate_latest_image()
         self.draw_scene_cloud()
-        self.draw_camera_path()
         self.best_grasp = self.predict_best_grasp()
         self.done = True
