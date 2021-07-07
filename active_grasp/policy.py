@@ -16,22 +16,7 @@ from vgn.perception import UniformTSDFVolume
 from vgn.utils import *
 
 
-def get_policy(name):
-    if name == "single-view":
-        return SingleView()
-    else:
-        raise ValueError("{} policy does not exist.".format(name))
-
-
-class Policy:
-    def activate(self, bbox):
-        raise NotImplementedError
-
-    def update(self):
-        raise NotImplementedError
-
-
-class BasePolicy(Policy):
+class BasePolicy:
     def __init__(self):
         self.cv_bridge = cv_bridge.CvBridge()
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
@@ -42,11 +27,12 @@ class BasePolicy(Policy):
         self.connect_to_camera()
         self.connect_to_rviz()
 
-        self.rate = 2
+        self.rate = 5
 
     def load_parameters(self):
-        self.base_frame = rospy.get_param("~base_frame_id")
         self.task_frame = rospy.get_param("~frame_id")
+        self.base_frame = rospy.get_param("~base_frame_id")
+        self.ee_frame = rospy.get_param("~ee_frame_id")
         self.cam_frame = rospy.get_param("~camera/frame_id")
         self.info_topic = rospy.get_param("~camera/info_topic")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
@@ -55,6 +41,7 @@ class BasePolicy(Policy):
         tf._init_listener()
         rospy.sleep(1.0)  # wait to receive transforms
         self.T_B_task = tf.lookup(self.base_frame, self.task_frame)
+        self.T_EE_cam = tf.lookup(self.ee_frame, self.cam_frame)
 
     def connect_to_camera(self):
         msg = rospy.wait_for_message(
@@ -160,13 +147,16 @@ class BasePolicy(Policy):
         self.path_pub.publish(MarkerArray([spheres, lines]))
 
 
-class SingleView(BasePolicy):
-    """
-    Process a single image from the initial viewpoint.
-    """
+registry = {}
 
-    def update(self):
-        self.integrate_latest_image()
-        self.draw_scene_cloud()
-        self.best_grasp = self.predict_best_grasp()
-        self.done = True
+
+def register(id, cls):
+    global registry
+    registry[id] = cls
+
+
+def make(id):
+    if id in registry:
+        return registry[id]()
+    else:
+        raise ValueError("{} policy does not exist.".format(id))
