@@ -11,6 +11,7 @@ from sensor_msgs.msg import JointState, Image, CameraInfo
 import std_srvs.srv as std_srvs
 import tf2_ros
 
+import active_grasp.srv
 from robot_utils.ros.conversions import *
 from simulation import Simulation
 
@@ -29,7 +30,7 @@ class BtSimNode:
         self.broadcast_transforms()
 
     def advertise_services(self):
-        rospy.Service("reset", std_srvs.Trigger, self.reset)
+        rospy.Service("reset", active_grasp.srv.Reset, self.reset)
 
     def broadcast_transforms(self):
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -44,10 +45,11 @@ class BtSimNode:
     def reset(self, req):
         self.reset_requested = True
         rospy.sleep(1.0)  # wait for the latest sim step to finish
-        self.sim.reset()
+        bbox = self.sim.reset()
+        res = active_grasp.srv.ResetResponse(bbox.to_msg())
         self.step_cnt = 0
         self.reset_requested = False
-        return std_srvs.TriggerResponse(success=True)
+        return res
 
     def run(self):
         rate = rospy.Rate(self.sim.rate)
@@ -158,8 +160,8 @@ class CameraInterface:
         stamp = rospy.Time.now()
         self.cam_info_msg.header.stamp = stamp
         self.cam_info_pub.publish(self.cam_info_msg)
-        _, depth = self.camera.get_image()
-        depth_msg = self.cv_bridge.cv2_to_imgmsg(depth)
+        img = self.camera.get_image()
+        depth_msg = self.cv_bridge.cv2_to_imgmsg(img.depth)
         depth_msg.header.stamp = stamp
         self.depth_pub.publish(depth_msg)
 

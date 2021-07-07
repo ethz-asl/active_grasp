@@ -5,6 +5,7 @@ import rospkg
 from robot_utils.bullet import *
 from robot_utils.controllers import CartesianPoseController
 from robot_utils.spatial import Rotation, Transform
+from utils import AABBox
 
 
 class Simulation(BtSim):
@@ -47,9 +48,9 @@ class Simulation(BtSim):
     def reset(self):
         self.remove_all_objects()
         self.set_initial_arm_configuration()
-        urdfs = np.random.choice(self.urdfs, 4)
-        origin = np.r_[self.origin[:2], 0.625]
-        self.random_object_arrangement(urdfs, origin, self.length, 0.8)
+        self.load_random_object_arrangement()
+        uid = self.select_target()
+        return self.get_target_bbox(uid)
 
     def set_initial_arm_configuration(self):
         q = self.arm.configurations["ready"]
@@ -75,7 +76,10 @@ class Simulation(BtSim):
         for uid in list(self.object_uids):
             self.remove_object(uid)
 
-    def random_object_arrangement(self, urdfs, origin, length, scale=1.0, attempts=10):
+    def load_random_object_arrangement(self, attempts=10):
+        origin = np.r_[self.origin[:2], 0.625]
+        scale = 0.8
+        urdfs = np.random.choice(self.urdfs, 4)
         for urdf in urdfs:
             # Load the object
             uid = self.load_object(urdf, Rotation.identity(), [0.0, 0.0, 0.0], scale)
@@ -85,7 +89,7 @@ class Simulation(BtSim):
             for _ in range(attempts):
                 # Try to place the object without collision
                 ori = Rotation.from_rotvec([0.0, 0.0, np.random.uniform(0, 2 * np.pi)])
-                offset = np.r_[np.random.uniform(0.2, 0.8, 2) * length, z_offset]
+                offset = np.r_[np.random.uniform(0.2, 0.8, 2) * self.length, z_offset]
                 p.resetBasePositionAndOrientation(uid, origin + offset, ori.as_quat())
                 self.step()
                 if not p.getContactPoints(uid):
@@ -95,6 +99,17 @@ class Simulation(BtSim):
             else:
                 # No placement found, remove the object
                 self.remove_object(uid)
+
+    def select_target(self):
+        img = self.camera.get_image()
+        uids, counts = np.unique(img.mask, return_counts=True)
+        target_uid = uids[np.argmin(counts)]
+        p.changeVisualShape(target_uid, -1, rgbaColor=[1, 0, 0, 1])
+        return target_uid
+
+    def get_target_bbox(self, uid):
+        aabb_min, aabb_max = p.getAABB(uid)
+        return AABBox(aabb_min, aabb_max)
 
 
 class CartesianPoseController:

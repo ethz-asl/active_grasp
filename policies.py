@@ -2,9 +2,10 @@ import cv_bridge
 import numpy as np
 from pathlib import Path
 import rospy
-from sensor_msgs.msg import Image, CameraInfo
+import sensor_msgs.msg
 from visualization_msgs.msg import Marker, MarkerArray
 
+from robot_utils.perception import Image
 from robot_utils.ros import tf
 from robot_utils.ros.conversions import *
 from robot_utils.ros.rviz import *
@@ -45,12 +46,16 @@ class BasePolicy:
         self.T_B_task = tf.lookup(self.base_frame, self.task_frame)
 
     def connect_to_camera(self):
-        msg = rospy.wait_for_message(self.info_topic, CameraInfo, rospy.Duration(2.0))
+        msg = rospy.wait_for_message(
+            self.info_topic, sensor_msgs.msg.CameraInfo, rospy.Duration(2.0)
+        )
         self.intrinsic = from_camera_info_msg(msg)
-        rospy.Subscriber(self.depth_topic, Image, self.sensor_cb, queue_size=1)
+        rospy.Subscriber(
+            self.depth_topic, sensor_msgs.msg.Image, self.sensor_cb, queue_size=1
+        )
 
     def sensor_cb(self, msg):
-        self.depth_img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
+        self.img = Image(depth=self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32))
         self.extrinsic = tf.lookup(
             self.cam_frame,
             self.task_frame,
@@ -72,7 +77,7 @@ class BasePolicy:
     def integrate_latest_image(self):
         self.viewpoints.append(self.extrinsic.inv())
         self.tsdf.integrate(
-            self.depth_img,
+            self.img,
             self.intrinsic,
             self.extrinsic,
         )
