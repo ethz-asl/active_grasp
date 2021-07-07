@@ -18,12 +18,20 @@ from vgn.utils import *
 
 def get_policy(name):
     if name == "single-view":
-        return SingleViewBaseline()
+        return SingleView()
     else:
         raise ValueError("{} policy does not exist.".format(name))
 
 
-class BasePolicy:
+class Policy:
+    def activate(self, bbox):
+        raise NotImplementedError
+
+    def update(self):
+        raise NotImplementedError
+
+
+class BasePolicy(Policy):
     def __init__(self):
         self.cv_bridge = cv_bridge.CvBridge()
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
@@ -33,6 +41,8 @@ class BasePolicy:
         self.lookup_transforms()
         self.connect_to_camera()
         self.connect_to_rviz()
+
+        self.rate = 2
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
@@ -150,14 +160,10 @@ class BasePolicy:
         self.path_pub.publish(MarkerArray([spheres, lines]))
 
 
-class SingleViewBaseline(BasePolicy):
+class SingleView(BasePolicy):
     """
     Process a single image from the initial viewpoint.
     """
-
-    def __init__(self):
-        super().__init__()
-        self.rate = 1
 
     def update(self):
         self.integrate_latest_image()

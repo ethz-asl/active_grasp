@@ -8,13 +8,12 @@ from geometry_msgs.msg import PoseStamped
 import numpy as np
 import rospy
 from sensor_msgs.msg import JointState, Image, CameraInfo
-import std_srvs.srv as std_srvs
 import tf2_ros
 
-import active_grasp.srv
+from active_grasp.srv import Reset, ResetResponse
+from active_grasp.simulation import Simulation
+from active_grasp.utils import *
 from robot_utils.ros.conversions import *
-from simulation import Simulation
-from utils import *
 
 
 class BtSimNode:
@@ -31,7 +30,7 @@ class BtSimNode:
         self.broadcast_transforms()
 
     def advertise_services(self):
-        rospy.Service("reset", active_grasp.srv.Reset, self.reset)
+        rospy.Service("reset", Reset, self.reset)
 
     def broadcast_transforms(self):
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
@@ -47,7 +46,7 @@ class BtSimNode:
         self.reset_requested = True
         rospy.sleep(1.0)  # wait for the latest sim step to finish
         bbox = self.sim.reset()
-        res = active_grasp.srv.ResetResponse(to_bbox_msg(bbox))
+        res = ResetResponse(to_bbox_msg(bbox))
         self.step_cnt = 0
         self.reset_requested = False
         return res

@@ -173,23 +173,23 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        panda_link0:
-          panda_link1:
-            panda_link2:
-              panda_link3:
-                panda_link4:
-                  panda_link5:
-                    panda_link6:
-                      panda_link7:
-                        panda_link8:
-                          panda_hand:
-                            cam_optical_frame:
-                              {}
-                            panda_leftfinger:
-                              {}
-                            panda_rightfinger:
-                              {}
         world:
+          panda_link0:
+            panda_link1:
+              panda_link2:
+                panda_link3:
+                  panda_link4:
+                    panda_link5:
+                      panda_link6:
+                        panda_link7:
+                          panda_link8:
+                            panda_hand:
+                              cam_optical_frame:
+                                {}
+                              panda_leftfinger:
+                                {}
+                              panda_rightfinger:
+                                {}
           task:
             {}
       Update Interval: 0
@@ -320,7 +320,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.1227775812149048
+      Distance: 1.5774216651916504
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -357,4 +357,4 @@ Window Geometry:
     collapsed: true
   Width: 1275
   X: 61
-  Y: 200
+  Y: 163

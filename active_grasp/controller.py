@@ -1,10 +1,10 @@
 import numpy as np
 import rospy
 
-from robot_utils.ros import tf
+from active_grasp.srv import Reset, ResetRequest
+from active_grasp.utils import *
 from robot_utils.ros.panda import PandaGripperClient
 from robot_utils.spatial import Rotation, Transform
-from utils import CartesianPoseControllerClient
 
 
 class GraspController:
@@ -12,6 +12,7 @@ class GraspController:
         self.policy = policy
         self.controller = CartesianPoseControllerClient()
         self.gripper = PandaGripperClient()
+        self.reset_env = rospy.ServiceProxy("reset", Reset)
         self.load_parameters()
 
     def load_parameters(self):
@@ -24,7 +25,10 @@ class GraspController:
             self.execute_grasp(grasp)
 
     def reset(self):
-        raise NotImplementedError
+        req = ResetRequest()
+        res = self.reset_env(req)
+        rospy.sleep(1.0)  # wait for states to be updated
+        return from_bbox_msg(res.bbox)
 
     def explore(self, bbox):
         self.policy.activate(bbox)

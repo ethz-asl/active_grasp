@@ -2,10 +2,10 @@ from pathlib import Path
 import pybullet as p
 import rospkg
 
+from active_grasp.utils import *
 from robot_utils.bullet import *
 from robot_utils.controllers import CartesianPoseController
 from robot_utils.spatial import Rotation, Transform
-from utils import *
 
 
 class Simulation(BtSim):
