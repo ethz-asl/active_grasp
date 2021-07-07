@@ -103,6 +103,8 @@ class Simulation(BtSim):
     def select_target(self):
         img = self.camera.get_image()
         uids, counts = np.unique(img.mask, return_counts=True)
+        mask = np.isin(uids, self.object_uids)  # remove ids of the floor, table, etc
+        uids, counts = uids[mask], counts[mask]
         target_uid = uids[np.argmin(counts)]
         p.changeVisualShape(target_uid, -1, rgbaColor=[1, 0, 0, 1])
         return target_uid
