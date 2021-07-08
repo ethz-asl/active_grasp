@@ -33,7 +33,7 @@ class Simulation(BtSim):
         ori = Rotation.from_rotvec(np.array([0, 0, np.pi / 2])).as_quat()
         p.loadURDF("table/table.urdf", baseOrientation=ori, useFixedBase=True)
         self.length = 0.3
-        self.origin = [-0.3, -0.5 * self.length, 0.5]
+        self.origin = [-0.35, -0.5 * self.length, 0.5]
 
     def load_robot(self):
         self.T_W_B = Transform(Rotation.identity(), np.r_[-0.6, 0.0, 0.4])
