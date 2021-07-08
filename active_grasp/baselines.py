@@ -45,6 +45,40 @@ class TopBaseline(BasePolicy):
             return self.target
 
 
+class RandomBaseline(BasePolicy):
+    """
+    Move the camera to a random viewpoint on a circle centered above the target.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.r = 0.06
+        self.h = 0.3
+
+    def activate(self, bbox):
+        super().activate(bbox)
+        circle_center = (bbox.min + bbox.max) / 2.0
+        circle_center[2] += self.h
+        t = np.random.uniform(np.pi, 3.0 * np.pi)
+        eye = circle_center + np.r_[self.r * np.cos(t), self.r * np.sin(t), 0]
+        center = (self.bbox.min + self.bbox.max) / 2.0
+        up = np.r_[1.0, 0.0, 0.0]
+        self.target = self.T_B_task * (self.T_EE_cam * look_at(eye, center, up)).inv()
+
+    def update(self):
+        current = tf.lookup(self.base_frame, self.ee_frame)
+        error = current.translation - self.target.translation
+
+        if np.linalg.norm(error) < 0.01:
+            self.best_grasp = self.predict_best_grasp()
+            self.done = True
+        else:
+            self.integrate_latest_image()
+            self.draw_scene_cloud()
+            self.draw_camera_path()
+            return self.target
+
+
 class FixedTrajectoryBaseline(BasePolicy):
     """
     Follow a pre-defined circular trajectory centered above the target object.
