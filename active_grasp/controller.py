@@ -33,7 +33,7 @@ class GraspController:
     def explore(self, bbox):
         self.policy.activate(bbox)
         r = rospy.Rate(self.policy.rate)
-        while True:
+        while not self.policy.done:
             cmd = self.policy.update()
             if self.policy.done:
                 break

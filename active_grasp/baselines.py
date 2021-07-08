@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.interpolate
+from robot_utils.spatial import Transform
 import rospy
 
 from active_grasp.policy import BasePolicy
@@ -7,7 +8,7 @@ from robot_utils.ros import tf
 from vgn.utils import look_at
 
 
-class SingleViewBaseline(BasePolicy):
+class SingleView(BasePolicy):
     """
     Process a single image from the initial viewpoint.
     """
@@ -19,7 +20,7 @@ class SingleViewBaseline(BasePolicy):
         self.done = True
 
 
-class TopBaseline(BasePolicy):
+class TopView(BasePolicy):
     """
     Move the camera to a top-down view of the target object.
     """
@@ -45,7 +46,7 @@ class TopBaseline(BasePolicy):
             return self.target
 
 
-class RandomBaseline(BasePolicy):
+class RandomView(BasePolicy):
     """
     Move the camera to a random viewpoint on a circle centered above the target.
     """
@@ -79,7 +80,7 @@ class RandomBaseline(BasePolicy):
             return self.target
 
 
-class FixedTrajectoryBaseline(BasePolicy):
+class FixedTrajectory(BasePolicy):
     """
     Follow a pre-defined circular trajectory centered above the target object.
     """
@@ -112,3 +113,36 @@ class FixedTrajectoryBaseline(BasePolicy):
             self.draw_scene_cloud()
             self.draw_camera_path()
             return target
+
+
+class AlignmentView(BasePolicy):
+    """
+    Align the camera with an initial grasp prediction as proposed in (Gualtieri, 2017).
+    """
+
+    def activate(self, bbox):
+        super().activate(bbox)
+        self.integrate_latest_image()
+        self.draw_scene_cloud()
+        self.best_grasp = self.predict_best_grasp()
+        if self.best_grasp:
+            R, t = self.best_grasp.rotation, self.best_grasp.translation
+            center = t
+            eye = R.apply([0.0, 0.0, -0.16]) + t
+            up = np.r_[1.0, 0.0, 0.0]
+            self.target = (self.T_EE_cam * look_at(eye, center, up)).inv()
+        else:
+            self.done = True
+
+    def update(self):
+        current = tf.lookup(self.base_frame, self.ee_frame)
+        error = current.translation - self.target.translation
+
+        if np.linalg.norm(error) < 0.01:
+            self.best_grasp = self.predict_best_grasp()
+            self.done = True
+        else:
+            self.integrate_latest_image()
+            self.draw_scene_cloud()
+            self.draw_camera_path()
+            return self.target
