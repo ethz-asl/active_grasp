@@ -5,7 +5,7 @@
   <rosparam command="load" file="$(find active_grasp)/config/active_grasp.yaml" subst_value="true" />
 
   <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/urdfs/panda_arm_hand.urdf.xacro" />
-  <node pkg="active_grasp" type="bt_sim_node.py" name="simulation" args="--gui" output="screen" />
+  <node pkg="active_grasp" type="bt_sim_node.py" name="bt_sim" output="screen" />
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/active_grasp.rviz" if="$(arg launch_rviz)" />

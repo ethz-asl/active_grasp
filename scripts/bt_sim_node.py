@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import actionlib
-import argparse
 import cv_bridge
 import franka_gripper.msg
 from geometry_msgs.msg import PoseStamped
@@ -17,8 +16,10 @@ from robot_utils.ros.conversions import *
 
 
 class BtSimNode:
-    def __init__(self, gui):
-        self.sim = Simulation(gui=gui)
+    def __init__(self):
+        gui = rospy.get_param("~gui", True)
+        rng = self.get_rng()
+        self.sim = Simulation(gui=gui, rng=rng)
         self.robot_state_interface = RobotStateInterface(self.sim.arm, self.sim.gripper)
         self.arm_interface = ArmInterface(self.sim.arm, self.sim.controller)
         self.gripper_interface = GripperInterface(self.sim.gripper)
@@ -28,6 +29,10 @@ class BtSimNode:
 
         self.advertise_services()
         self.broadcast_transforms()
+
+    def get_rng(self):
+        seed = rospy.get_param("~seed", None)
+        return np.random.default_rng(seed) if seed else np.random
 
     def advertise_services(self):
         rospy.Service("reset", Reset, self.reset)
@@ -166,17 +171,9 @@ class CameraInterface:
         self.depth_pub.publish(depth_msg)
 
 
-def create_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--gui", action="store_true")
-    return parser
-
-
 def main():
     rospy.init_node("bt_sim")
-    parser = create_parser()
-    args, _ = parser.parse_known_args()
-    server = BtSimNode(args.gui)
+    server = BtSimNode()
     server.run()
 
 

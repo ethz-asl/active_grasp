@@ -4,24 +4,25 @@ import rospkg
 
 from active_grasp.utils import *
 from robot_utils.bullet import *
-from robot_utils.controllers import CartesianPoseController
 from robot_utils.spatial import Rotation, Transform
 
 
 class Simulation(BtSim):
-    def __init__(self, gui=True):
+    def __init__(self, gui, rng):
         super().__init__(gui=gui, sleep=False)
-        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-        p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
-
+        self.rng = rng
         self.object_uids = []
 
+        self.configure_visualizer()
         self.find_object_urdfs()
         self.load_table()
         self.load_robot()
         self.load_controller()
-
         self.reset()
+
+    def configure_visualizer(self):
+        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
 
     def find_object_urdfs(self):
         rospack = rospkg.RosPack()
@@ -54,8 +55,8 @@ class Simulation(BtSim):
 
     def set_initial_arm_configuration(self):
         q = self.arm.configurations["ready"]
-        q[0] = np.deg2rad(np.random.uniform(-10, 10))
-        q[5] = np.deg2rad(np.random.uniform(90, 105))
+        q[0] = np.deg2rad(self.rng.uniform(-10, 10))
+        q[5] = np.deg2rad(self.rng.uniform(90, 105))
         for i, q_i in enumerate(q):
             p.resetJointState(self.arm.uid, i, q_i, 0)
         p.resetJointState(self.arm.uid, 9, 0.04, 0)
@@ -79,7 +80,7 @@ class Simulation(BtSim):
     def load_random_object_arrangement(self, attempts=10):
         origin = np.r_[self.origin[:2], 0.625]
         scale = 0.8
-        urdfs = np.random.choice(self.urdfs, 4)
+        urdfs = self.rng.choice(self.urdfs, 4)
         for urdf in urdfs:
             # Load the object
             uid = self.load_object(urdf, Rotation.identity(), [0.0, 0.0, 0.0], scale)
@@ -88,8 +89,8 @@ class Simulation(BtSim):
             state_id = p.saveState()
             for _ in range(attempts):
                 # Try to place the object without collision
-                ori = Rotation.from_rotvec([0.0, 0.0, np.random.uniform(0, 2 * np.pi)])
-                offset = np.r_[np.random.uniform(0.2, 0.8, 2) * self.length, z_offset]
+                ori = Rotation.from_rotvec([0.0, 0.0, self.rng.uniform(0, 2 * np.pi)])
+                offset = np.r_[self.rng.uniform(0.2, 0.8, 2) * self.length, z_offset]
                 p.resetBasePositionAndOrientation(uid, origin + offset, ori.as_quat())
                 self.step()
                 if not p.getContactPoints(uid):
