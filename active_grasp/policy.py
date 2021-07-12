@@ -28,6 +28,7 @@ class BasePolicy:
         self.connect_to_rviz()
 
         self.rate = 5
+        self.info = {}
 
     def load_parameters(self):
         self.task_frame = rospy.get_param("~frame_id")

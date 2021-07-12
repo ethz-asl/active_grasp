@@ -20,9 +20,11 @@ class GraspController:
 
     def run(self):
         bbox = self.reset()
-        grasp = self.explore(bbox)
-        if grasp:
-            self.execute_grasp(grasp)
+        with Timer("exploration_time"):
+            grasp = self.explore(bbox)
+        with Timer("execution_time"):
+            res = self.execute_grasp(grasp)
+        return self.collect_info(res)
 
     def reset(self):
         req = ResetRequest()
@@ -42,6 +44,9 @@ class GraspController:
         return self.policy.best_grasp
 
     def execute_grasp(self, grasp):
+        if not grasp:
+            return "aborted"
+
         T_B_G = self.postprocess(grasp)
 
         self.gripper.move(0.08)
@@ -65,7 +70,9 @@ class GraspController:
         rospy.sleep(2.0)
 
         # Check whether the object remains in the hand
-        return self.gripper.read() > 0.005
+        success = self.gripper.read() > 0.005
+
+        return "succeeded" if success else "failed"
 
     def postprocess(self, T_B_G):
         # Ensure that the camera is pointing forward.
@@ -73,3 +80,16 @@ class GraspController:
         if rot.as_matrix()[:, 0][0] < 0:
             T_B_G.rotation = rot * Rotation.from_euler("z", np.pi)
         return T_B_G
+
+    def collect_info(self, result):
+        points = [p.translation for p in self.policy.viewpoints]
+        d = np.sum([np.linalg.norm(p2 - p1) for p1, p2 in zip(points, points[1:])])
+
+        info = {
+            "result": result,
+            "viewpoint_count": len(points),
+            "distance_travelled": d,
+        }
+        info.update(self.policy.info)
+        info.update(Timer.timers)
+        return info

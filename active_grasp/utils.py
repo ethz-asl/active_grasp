@@ -1,5 +1,8 @@
+from datetime import datetime
 from geometry_msgs.msg import PoseStamped
+import pandas as pd
 import rospy
+import time
 
 import active_grasp.msg
 from robot_utils.ros.conversions import *
@@ -34,3 +37,35 @@ def to_bbox_msg(bbox):
     msg.min = to_point_msg(bbox.min)
     msg.max = to_point_msg(bbox.max)
     return msg
+
+
+class Timer:
+    timers = dict()
+
+    def __init__(self, name):
+        self.name = name
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *exc_info):
+        self.stop()
+
+    def start(self):
+        self.tic = time.perf_counter()
+
+    def stop(self):
+        elapsed_time = time.perf_counter() - self.tic
+        self.timers[self.name] = elapsed_time
+
+
+class Logger:
+    def __init__(self, logdir, policy, desc):
+        stamp = datetime.now().strftime("%y%m%d-%H%M%S")
+        name = "{}_policy={},{}".format(stamp, policy, desc).strip(",")
+        self.path = logdir / (name + ".csv")
+
+    def log_run(self, info):
+        df = pd.DataFrame.from_records([info])
+        df.to_csv(self.path, mode="a", header=not self.path.exists(), index=False)
