@@ -1,6 +1,7 @@
 from pathlib import Path
 import pybullet as p
 import rospkg
+import time
 
 from active_grasp.utils import *
 from robot_utils.bullet import *
@@ -34,7 +35,7 @@ class Simulation(BtSim):
         ori = Rotation.from_rotvec(np.array([0, 0, np.pi / 2])).as_quat()
         p.loadURDF("table/table.urdf", baseOrientation=ori, useFixedBase=True)
         self.length = 0.3
-        self.origin = [-0.35, -0.5 * self.length, 0.5]
+        self.origin = [-0.3, -0.5 * self.length, 0.5]
 
     def load_robot(self):
         self.T_W_B = Transform(Rotation.identity(), np.r_[-0.6, 0.0, 0.4])
@@ -54,9 +55,15 @@ class Simulation(BtSim):
         return self.get_target_bbox(uid)
 
     def set_initial_arm_configuration(self):
-        q = self.arm.configurations["ready"]
-        q[0] = np.deg2rad(self.rng.uniform(-10, 10))
-        q[5] = np.deg2rad(self.rng.uniform(90, 105))
+        q = [
+            self.rng.uniform(-0.17, 0.17),  # 0.0
+            self.rng.uniform(-0.96, -0.62),  # -0.79,
+            self.rng.uniform(-0.17, 0.17),  # 0.0
+            self.rng.uniform(-2.36, -2.19),  # -2.36,
+            0.0,
+            self.rng.uniform(1.57, 1.91),  # 1.57
+            self.rng.uniform(0.62, 0.96),  # 0.79,
+        ]
         for i, q_i in enumerate(q):
             p.resetJointState(self.arm.uid, i, q_i, 0)
         p.resetJointState(self.arm.uid, 9, 0.04, 0)
