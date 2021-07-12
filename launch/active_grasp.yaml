@@ -1,6 +1,7 @@
 bt_sim:
   gui: True
   seed: 12
+  cam_pub_rate: 10
 
 active_grasp:
   frame_id: task

@@ -17,9 +17,9 @@ from robot_utils.ros.conversions import *
 
 class BtSimNode:
     def __init__(self):
-        gui = rospy.get_param("~gui", True)
+        self.load_parameters()
         rng = self.get_rng()
-        self.sim = Simulation(gui=gui, rng=rng)
+        self.sim = Simulation(gui=self.gui, rng=rng)
         self.robot_state_interface = RobotStateInterface(self.sim.arm, self.sim.gripper)
         self.arm_interface = ArmInterface(self.sim.arm, self.sim.controller)
         self.gripper_interface = GripperInterface(self.sim.gripper)
@@ -29,6 +29,10 @@ class BtSimNode:
 
         self.advertise_services()
         self.broadcast_transforms()
+
+    def load_parameters(self):
+        self.gui = rospy.get_param("~gui", True)
+        self.cam_pub_rate = rospy.get_param("~cam_pub_rate")
 
     def get_rng(self):
         seed = rospy.get_param("~seed", None)
@@ -69,7 +73,7 @@ class BtSimNode:
         self.robot_state_interface.update()
         self.arm_interface.update()
         self.gripper_interface.update(self.sim.dt)
-        if self.step_cnt % int(self.sim.rate / 5) == 0:
+        if self.step_cnt % int(self.sim.rate / self.cam_pub_rate) == 0:
             self.camera_interface.update()
 
 
