@@ -2,7 +2,7 @@
 <launch>
   <arg name="launch_rviz" default="true" />
 
-  <rosparam command="load" file="$(find active_grasp)/config/active_grasp.yaml" subst_value="true" />
+  <rosparam command="load" file="$(find active_grasp)launch/active_grasp.yaml" subst_value="true" />
 
   <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/urdfs/panda_arm_hand.urdf.xacro" />
   <node pkg="active_grasp" type="bt_sim_node.py" name="bt_sim" output="screen" />
