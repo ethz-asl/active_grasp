@@ -179,7 +179,8 @@ class GripperControllerPlugin(Plugin):
 
 
 class CameraPlugin(Plugin):
-    def __init__(self, camera, name="camera", rate=10):
+    def __init__(self, camera, name="camera"):
+        rate = rospy.get_param("~cam_rate", 5)
         super().__init__(rate)
         self.camera = camera
         self.name = name
