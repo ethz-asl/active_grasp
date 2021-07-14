@@ -59,7 +59,7 @@ class GraspController:
 
         # Approach grasp pose.
         self.controller.send_target(T_B_G * self.T_G_EE)
-        rospy.sleep(1.0)
+        rospy.sleep(2.0)
 
         # Close the fingers.
         self.gripper.grasp()

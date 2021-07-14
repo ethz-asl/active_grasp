@@ -1,7 +1,6 @@
 bt_sim:
   gui: True
   seed: 12
-  cam_pub_rate: 10
 
 active_grasp:
   frame_id: task
@@ -10,9 +9,9 @@ active_grasp:
   ee_frame_id: panda_hand
   ee_grasp_offset: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.065]
   camera:
-    frame_id: cam_optical_frame
-    info_topic: /cam/depth/camera_info
-    depth_topic: /cam/depth/image_raw
+    frame_id: camera_optical_frame
+    info_topic: /camera/depth/camera_info
+    depth_topic: /camera/depth/image_raw
 
 vgn:
   model: $(find vgn)/assets/models/vgn_conv.pth

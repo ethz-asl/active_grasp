@@ -19,7 +19,6 @@ class Simulation(BtSim):
         self.load_table()
         self.load_robot()
         self.load_controller()
-        self.reset()
 
     def configure_visualizer(self):
         # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -45,7 +44,9 @@ class Simulation(BtSim):
         self.camera = BtCamera(320, 240, 1.047, 0.1, 1.0, self.arm.uid, 11)
 
     def load_controller(self):
-        self.controller = CartesianPoseController(self.model, self.arm.ee_frame, None)
+        q, _ = self.arm.get_state()
+        x0 = self.model.pose(self.arm.ee_frame, q)
+        self.controller = CartesianPoseController(self.model, self.arm.ee_frame, x0)
 
     def reset(self):
         self.remove_all_objects()

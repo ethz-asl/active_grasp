@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="launch_rviz" default="true" />
+  <arg name="launch_rviz" default="false" />
 
   <rosparam command="load" file="$(find active_grasp)launch/active_grasp.yaml" subst_value="true" />
 
