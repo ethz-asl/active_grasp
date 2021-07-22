@@ -1,31 +1,40 @@
 from pathlib import Path
 import pybullet as p
+import pybullet_data
 import rospkg
-import time
 
-from active_grasp.utils import *
-from robot_utils.bullet import *
-from robot_utils.spatial import Rotation, Transform
+from active_grasp.bbox import AABBox
+from robot_helpers.bullet import *
+from robot_helpers.model import Model
+from robot_helpers.spatial import Rotation, Transform
 
 
-class Simulation(BtSim):
-    def __init__(self, gui, rng):
-        super().__init__(gui=gui, sleep=False)
-        self.rng = rng
-        self.object_uids = []
-
+class Simulation:
+    def __init__(self, gui):
+        self.configure_physics_engine(gui, 60, 4)
         self.configure_visualizer()
-        self.find_object_urdfs()
+        self.find_urdfs()
         self.load_table()
         self.load_robot()
         self.load_controller()
+        self.object_uids = []
+
+    def configure_physics_engine(self, gui, rate, sub_step_count):
+        self.rate = rate
+        self.dt = 1.0 / self.rate
+        p.connect(p.GUI if gui else p.DIRECT)
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        p.setPhysicsEngineParameter(fixedTimeStep=self.dt, numSubSteps=sub_step_count)
+        p.setGravity(0.0, 0.0, -9.81)
 
     def configure_visualizer(self):
         # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
 
-    def find_object_urdfs(self):
+    def find_urdfs(self):
         rospack = rospkg.RosPack()
+        assets_path = Path(rospack.get_path("active_grasp")) / "assets"
+        self.panda_urdf = assets_path / "urdfs/franka/panda_arm_hand.urdf"
         root = Path(rospack.get_path("vgn")) / "assets/urdfs/packed/test"
         self.urdfs = [str(f) for f in root.iterdir() if f.suffix == ".urdf"]
 
@@ -38,9 +47,9 @@ class Simulation(BtSim):
 
     def load_robot(self):
         self.T_W_B = Transform(Rotation.identity(), np.r_[-0.6, 0.0, 0.4])
-        self.arm = BtPandaArm(self.T_W_B)
+        self.arm = BtPandaArm(self.panda_urdf, self.T_W_B)
         self.gripper = BtPandaGripper(self.arm)
-        self.model = Model(self.arm.urdf_path, self.arm.base_frame, self.arm.ee_frame)
+        self.model = Model(self.panda_urdf, self.arm.base_frame, self.arm.ee_frame)
         self.camera = BtCamera(320, 240, 1.047, 0.1, 1.0, self.arm.uid, 11)
 
     def load_controller(self):
@@ -48,12 +57,18 @@ class Simulation(BtSim):
         x0 = self.model.pose(self.arm.ee_frame, q)
         self.controller = CartesianPoseController(self.model, self.arm.ee_frame, x0)
 
+    def seed(self, seed):
+        self.rng = np.random.default_rng(seed)
+
     def reset(self):
         self.remove_all_objects()
         self.set_initial_arm_configuration()
         self.load_random_object_arrangement()
         uid = self.select_target()
         return self.get_target_bbox(uid)
+
+    def step(self):
+        p.stepSimulation()
 
     def set_initial_arm_configuration(self):
         q = [
@@ -110,8 +125,8 @@ class Simulation(BtSim):
                 self.remove_object(uid)
 
     def select_target(self):
-        img = self.camera.get_image()
-        uids, counts = np.unique(img.mask, return_counts=True)
+        _, _, mask = self.camera.get_image()
+        uids, counts = np.unique(mask, return_counts=True)
         mask = np.isin(uids, self.object_uids)  # remove ids of the floor, table, etc
         uids, counts = uids[mask], counts[mask]
         target_uid = uids[np.argmin(counts)]

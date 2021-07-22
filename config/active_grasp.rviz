@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /TF1/Tree1
       Splitter Ratio: 0.5
-    Tree Height: 595
+    Tree Height: 574
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -25,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: SceneCloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -61,7 +61,7 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        cam_optical_frame:
+        camera_optical_frame:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -136,8 +136,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        cam_optical_frame:
-          Value: false
+        camera_optical_frame:
+          Value: true
         panda_hand:
           Value: false
         panda_leftfinger:
@@ -173,57 +173,27 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
+        panda_link0:
+          panda_link1:
+            panda_link2:
+              panda_link3:
+                panda_link4:
+                  panda_link5:
+                    panda_link6:
+                      panda_link7:
+                        panda_link8:
+                          panda_hand:
+                            camera_optical_frame:
+                              {}
+                            panda_leftfinger:
+                              {}
+                            panda_rightfinger:
+                              {}
         world:
-          panda_link0:
-            panda_link1:
-              panda_link2:
-                panda_link3:
-                  panda_link4:
-                    panda_link5:
-                      panda_link6:
-                        panda_link7:
-                          panda_link8:
-                            panda_hand:
-                              cam_optical_frame:
-                                {}
-                              panda_leftfinger:
-                                {}
-                              panda_rightfinger:
-                                {}
           task:
             {}
       Update Interval: 0
       Value: true
-    - Alpha: 0.20000000298023224
-      Autocompute Intensity Bounds: false
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: false
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: TSDF
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.007499999832361937
-      Style: Boxes
-      Topic: /tsdf
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -247,7 +217,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Spheres
-      Topic: /cloud
+      Topic: /scene_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -268,28 +238,12 @@ Visualization Manager:
       Topic: /command
       Unreliable: false
       Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /bbox
-      Name: BBox
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /path
-      Name: CameraPath
+      Marker Topic: visualization_marker_array
+      Name: Markers
       Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /grasps
-      Name: Grasps
-      Namespaces:
-        {}
+        bbox: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -320,7 +274,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.5774216651916504
+      Distance: 1.3517695665359497
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -328,25 +282,25 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.2026568502187729
-        Y: 0.13089965283870697
-        Z: 0.3290979564189911
+        X: 0.3073185980319977
+        Y: 0.050485748797655106
+        Z: 0.3944588601589203
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3197976350784302
+      Pitch: 0.4747979938983917
       Target Frame: <Fixed Frame>
-      Yaw: 5.398510456085205
+      Yaw: 5.098489761352539
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 892
+  Height: 871
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd000000040000000000000156000002defc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000002de000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002b0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002b0000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004fb0000003efc0100000002fb0000000800540069006d00650100000000000004fb000002eb00fffffffb0000000800540069006d006501000000000000045000000000000000000000039f000002de00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000156000002c9fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000002c9000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002b0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002b0000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000050e0000003efc0100000002fb0000000800540069006d006501000000000000050e000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000003b2000002c900000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -355,6 +309,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1275
-  X: 61
-  Y: 163
+  Width: 1294
+  X: 104
+  Y: 374

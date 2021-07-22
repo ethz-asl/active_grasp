@@ -1,10 +1,9 @@
 import numpy as np
 import scipy.interpolate
-from robot_utils.spatial import Transform
 import rospy
 
 from active_grasp.policy import BasePolicy
-from robot_utils.ros import tf
+from robot_helpers.ros import tf
 from vgn.utils import look_at
 
 
@@ -14,9 +13,8 @@ class SingleView(BasePolicy):
     """
 
     def update(self):
-        self.integrate_latest_image()
-        self.draw_scene_cloud()
-        self.best_grasp = self.predict_best_grasp()
+        self._integrate_latest_image()
+        self.best_grasp = self._predict_best_grasp()
         self.done = True
 
 
@@ -37,12 +35,10 @@ class TopView(BasePolicy):
         error = current.translation - self.target.translation
 
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self._predict_best_grasp()
             self.done = True
         else:
-            self.integrate_latest_image()
-            self.draw_scene_cloud()
-            self.draw_camera_path()
+            self._integrate_latest_image()
             return self.target
 
 
@@ -71,12 +67,10 @@ class RandomView(BasePolicy):
         error = current.translation - self.target.translation
 
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self._predict_best_grasp()
             self.done = True
         else:
-            self.integrate_latest_image()
-            self.draw_scene_cloud()
-            self.draw_camera_path()
+            self._integrate_latest_image()
             return self.target
 
 
@@ -101,17 +95,15 @@ class FixedTrajectory(BasePolicy):
     def update(self):
         elapsed_time = (rospy.Time.now() - self.tic).to_sec()
         if elapsed_time > self.duration:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self._predict_best_grasp()
             self.done = True
         else:
-            self.integrate_latest_image()
+            self._integrate_latest_image()
             t = self.m(elapsed_time)
             eye = self.circle_center + np.r_[self.r * np.cos(t), self.r * np.sin(t), 0]
             center = (self.bbox.min + self.bbox.max) / 2.0
             up = np.r_[1.0, 0.0, 0.0]
             target = self.T_B_task * (self.T_EE_cam * look_at(eye, center, up)).inv()
-            self.draw_scene_cloud()
-            self.draw_camera_path()
             return target
 
 
@@ -122,9 +114,8 @@ class AlignmentView(BasePolicy):
 
     def activate(self, bbox):
         super().activate(bbox)
-        self.integrate_latest_image()
-        self.draw_scene_cloud()
-        self.best_grasp = self.predict_best_grasp()
+        self._integrate_latest_image()
+        self.best_grasp = self._predict_best_grasp()
         if self.best_grasp:
             R, t = self.best_grasp.rotation, self.best_grasp.translation
             center = t
@@ -139,10 +130,8 @@ class AlignmentView(BasePolicy):
         error = current.translation - self.target.translation
 
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self._predict_best_grasp()
             self.done = True
         else:
-            self.integrate_latest_image()
-            self.draw_scene_cloud()
-            self.draw_camera_path()
+            self._integrate_latest_image()
             return self.target

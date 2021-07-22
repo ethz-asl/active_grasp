@@ -2,35 +2,37 @@ import cv_bridge
 import numpy as np
 from pathlib import Path
 import rospy
-from rospy import Publisher
-import sensor_msgs.msg
-from visualization_msgs.msg import Marker, MarkerArray
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 
-from robot_utils.perception import Image
-from robot_utils.ros import tf
-from robot_utils.ros.conversions import *
-from robot_utils.ros.rviz import *
-from robot_utils.spatial import Transform
+from .visualization import Visualizer
+from robot_helpers.ros import tf
+from robot_helpers.ros.conversions import *
 from vgn.detection import VGN, compute_grasps
 from vgn.perception import UniformTSDFVolume
 from vgn.utils import *
 
 
-class BasePolicy:
+class Policy:
+    def activate(self, bbox):
+        raise NotImplementedError
+
+    def update(self):
+        raise NotImplementedError
+
+
+class BasePolicy(Policy):
     def __init__(self):
         self.cv_bridge = cv_bridge.CvBridge()
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
         self.finger_depth = 0.05
-
-        self.load_parameters()
-        self.lookup_transforms()
-        self.connect_to_camera()
-        self.connect_to_rviz()
-
         self.rate = 5
-        self.info = {}
+        self._load_parameters()
+        self._lookup_transforms()
+        self._init_camera_stream()
+        self._init_publishers()
+        self._init_visualizer()
 
-    def load_parameters(self):
+    def _load_parameters(self):
         self.task_frame = rospy.get_param("~frame_id")
         self.base_frame = rospy.get_param("~base_frame_id")
         self.ee_frame = rospy.get_param("~ee_frame_id")
@@ -38,114 +40,64 @@ class BasePolicy:
         self.info_topic = rospy.get_param("~camera/info_topic")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
 
-    def lookup_transforms(self):
-        tf._init_listener()
-        rospy.sleep(1.0)  # wait to receive transforms
+    def _lookup_transforms(self):
         self.T_B_task = tf.lookup(self.base_frame, self.task_frame)
         self.T_EE_cam = tf.lookup(self.ee_frame, self.cam_frame)
 
-    def connect_to_camera(self):
-        msg = rospy.wait_for_message(
-            self.info_topic, sensor_msgs.msg.CameraInfo, rospy.Duration(2.0)
-        )
+    def _init_camera_stream(self):
+        msg = rospy.wait_for_message(self.info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
-        rospy.Subscriber(
-            self.depth_topic, sensor_msgs.msg.Image, self.sensor_cb, queue_size=1
-        )
+        rospy.Subscriber(self.depth_topic, Image, self._sensor_cb, queue_size=1)
 
-    def sensor_cb(self, msg):
-        self.img = Image(depth=self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32))
-        self.extrinsic = tf.lookup(
-            self.cam_frame,
-            self.task_frame,
-            msg.header.stamp,
-            rospy.Duration(0.2),
-        )
+    def _sensor_cb(self, msg):
+        self.img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
+        self.extrinsic = tf.lookup(self.cam_frame, self.task_frame, msg.header.stamp)
 
-    def connect_to_rviz(self):
-        self.bbox_pub = Publisher("bbox", Marker, queue_size=1, latch=True)
-        self.cloud_pub = Publisher("cloud", PointCloud2, queue_size=1, latch=True)
-        self.path_pub = Publisher("path", MarkerArray, queue_size=1, latch=True)
-        self.grasps_pub = Publisher("grasps", MarkerArray, queue_size=1, latch=True)
+    def _init_publishers(self):
+        self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
+
+    def _init_visualizer(self):
+        self.visualizer = Visualizer(self.task_frame)
 
     def activate(self, bbox):
-        self.clear_grasps()
         self.bbox = bbox
-        self.draw_bbox()
         self.tsdf = UniformTSDFVolume(0.3, 40)
         self.viewpoints = []
         self.done = False
         self.best_grasp = None  # grasp pose defined w.r.t. the robot's base frame
+        self.visualizer.clear()
+        self.visualizer.bbox(bbox)
 
-    def update(self):
-        raise NotImplementedError
-
-    def integrate_latest_image(self):
+    def _integrate_latest_image(self):
         self.viewpoints.append(self.extrinsic.inv())
         self.tsdf.integrate(
             self.img,
             self.intrinsic,
             self.extrinsic,
         )
+        self._publish_scene_cloud()
+        self.visualizer.path(self.viewpoints)
 
-    def predict_best_grasp(self):
+    def _publish_scene_cloud(self):
+        cloud = self.tsdf.get_scene_cloud()
+        msg = to_cloud_msg(self.task_frame, np.asarray(cloud.points))
+        self.scene_cloud_pub.publish(msg)
+
+    def _predict_best_grasp(self):
         tsdf_grid = self.tsdf.get_grid()
         out = self.vgn.predict(tsdf_grid)
         score_fn = lambda g: g.pose.translation[2]
         grasps = compute_grasps(self.tsdf.voxel_size, out, score_fn, max_filter_size=3)
-        grasps = self.filter_grasps_on_target_object(grasps)
-        self.draw_grasps(grasps)
+        grasps = self._select_grasps_on_target_object(grasps)
         return self.T_B_task * grasps[0].pose if len(grasps) > 0 else None
 
-    def filter_grasps_on_target_object(self, grasps):
-        return [
-            g
-            for g in grasps
-            if self.bbox.is_inside(
-                g.pose.rotation.apply([0, 0, 0.05]) + g.pose.translation
-            )
-        ]
-
-    def clear_grasps(self):
-        self.grasps_pub.publish(DELETE_MARKER_ARRAY_MSG)
-
-    def draw_bbox(self):
-        pose = Transform.translation((self.bbox.min + self.bbox.max) / 2.0)
-        scale = self.bbox.max - self.bbox.min
-        color = np.r_[0.8, 0.2, 0.2, 0.6]
-        msg = create_marker(Marker.CUBE, self.task_frame, pose, scale, color)
-        self.bbox_pub.publish(msg)
-
-    def draw_scene_cloud(self):
-        cloud = self.tsdf.get_scene_cloud()
-        msg = to_cloud_msg(self.task_frame, np.asarray(cloud.points))
-        self.cloud_pub.publish(msg)
-
-    def draw_grasps(self, grasps):
-        msg = create_grasp_marker_array(self.task_frame, grasps, self.finger_depth)
-        self.grasps_pub.publish(msg)
-
-    def draw_camera_path(self):
-        identity = Transform.identity()
-        color = np.r_[31, 119, 180] / 255.0
-
-        # Spheres for each viewpoint
-        scale = 0.01 * np.ones(3)
-        spheres = create_marker(
-            Marker.SPHERE_LIST, self.task_frame, identity, scale, color
-        )
-        spheres.id = 0
-        spheres.points = [to_point_msg(p.translation) for p in self.viewpoints]
-
-        # Line strip connecting viewpoints
-        scale = [0.005, 0.0, 0.0]
-        lines = create_marker(
-            Marker.LINE_STRIP, self.task_frame, identity, scale, color
-        )
-        lines.id = 1
-        lines.points = [to_point_msg(p.translation) for p in self.viewpoints]
-
-        self.path_pub.publish(MarkerArray([spheres, lines]))
+    def _select_grasps_on_target_object(self, grasps):
+        result = []
+        for g in grasps:
+            tip = g.pose.rotation.apply([0, 0, 0.05]) + g.pose.translation
+            if self.bbox.is_inside(tip):
+                result.append(g)
+        return result
 
 
 registry = {}
