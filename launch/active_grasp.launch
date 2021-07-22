@@ -9,5 +9,5 @@
   <node pkg="active_grasp" type="bt_sim_node.py" name="bt_sim" output="screen" />
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/config/active_grasp.rviz" if="$(arg launch_rviz)" />
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/active_grasp.rviz" if="$(arg launch_rviz)" />
 </launch>
