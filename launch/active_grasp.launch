@@ -2,7 +2,7 @@
 <launch>
   <arg name="launch_rviz" default="false" />
 
-  <rosparam command="load" file="$(find active_grasp)/config/active_grasp.yaml" subst_value="true" />
+  <rosparam command="load" file="$(find active_grasp)/cfg/active_grasp.yaml" subst_value="true" />
 
   <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/urdfs/franka/panda_arm_hand.urdf.xacro" />
 

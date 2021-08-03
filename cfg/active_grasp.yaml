@@ -2,8 +2,6 @@ bt_sim:
   gui: True
 
 active_grasp:
-  frame_id: task
-  length: 0.3
   base_frame_id: panda_link0
   ee_frame_id: panda_hand
   ee_grasp_offset: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.065]
@@ -11,7 +9,7 @@ active_grasp:
     frame_id: camera_optical_frame
     info_topic: /camera/depth/camera_info
     depth_topic: /camera/depth/image_raw
-
+    
 vgn:
   model: $(find vgn)/assets/models/vgn_conv.pth
   finger_depth: 0.05

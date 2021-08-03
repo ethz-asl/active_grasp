@@ -46,8 +46,8 @@ class Simulation:
         self.origin = [-0.3, -0.5 * self.length, 0.5]
 
     def load_robot(self):
-        self.T_W_B = Transform(Rotation.identity(), np.r_[-0.6, 0.0, 0.4])
-        self.arm = BtPandaArm(self.panda_urdf, self.T_W_B)
+        self.T_world_base = Transform.translation(np.r_[-0.6, 0.0, 0.4])
+        self.arm = BtPandaArm(self.panda_urdf, self.T_world_base)
         self.gripper = BtPandaGripper(self.arm)
         self.model = Model(self.panda_urdf, self.arm.base_frame, self.arm.ee_frame)
         self.camera = BtCamera(320, 240, 1.047, 0.1, 1.0, self.arm.uid, 11)
@@ -135,33 +135,34 @@ class Simulation:
 
     def get_target_bbox(self, uid):
         aabb_min, aabb_max = p.getAABB(uid)
-        aabb_min = np.array(aabb_min) - self.origin
-        aabb_max = np.array(aabb_max) - self.origin
+        # Transform the coordinates to base_frame
+        aabb_min = np.array(aabb_min) - self.T_world_base.translation
+        aabb_max = np.array(aabb_max) - self.T_world_base.translation
         return AABBox(aabb_min, aabb_max)
 
 
 class CartesianPoseController:
     def __init__(self, model, frame, x0):
-        self._model = model
-        self._frame = frame
+        self.model = model
+        self.frame = frame
 
         self.kp = np.ones(6) * 4.0
-        self.max_linear_vel = 0.2
+        self.max_linear_vel = 0.1
         self.max_angular_vel = 1.57
 
         self.x_d = x0
 
     def update(self, q):
-        x = self._model.pose(self._frame, q)
+        x = self.model.pose(self.frame, q)
         error = np.zeros(6)
         error[:3] = self.x_d.translation - x.translation
         error[3:] = (self.x_d.rotation * x.rotation.inv()).as_rotvec()
-        dx = self._limit_rate(self.kp * error)
-        J_pinv = np.linalg.pinv(self._model.jacobian(self._frame, q))
+        dx = self.limit_rate(self.kp * error)
+        J_pinv = np.linalg.pinv(self.model.jacobian(self.frame, q))
         cmd = np.dot(J_pinv, dx)
         return cmd
 
-    def _limit_rate(self, dx):
+    def limit_rate(self, dx):
         linear, angular = dx[:3], dx[3:]
         linear = np.clip(linear, -self.max_linear_vel, self.max_linear_vel)
         angular = np.clip(angular, -self.max_angular_vel, self.max_angular_vel)

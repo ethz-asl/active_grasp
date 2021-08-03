@@ -12,9 +12,9 @@ class SingleView(BasePolicy):
     Process a single image from the initial viewpoint.
     """
 
-    def update(self):
-        self._integrate_latest_image()
-        self.best_grasp = self._predict_best_grasp()
+    def update(self, img, extrinsic):
+        self.integrate_img(img, extrinsic)
+        self.best_grasp = self.predict_best_grasp()
         self.done = True
 
 
@@ -25,21 +25,17 @@ class TopView(BasePolicy):
 
     def activate(self, bbox):
         super().activate(bbox)
-        center = (bbox.min + bbox.max) / 2.0
-        eye = np.r_[center[:2], center[2] + 0.3]
+        eye = np.r_[self.center[:2], self.center[2] + 0.3]
         up = np.r_[1.0, 0.0, 0.0]
-        self.target = self.T_B_task * (self.T_EE_cam * look_at(eye, center, up)).inv()
+        self.target = look_at(eye, self.center, up)
 
-    def update(self):
-        current = tf.lookup(self.base_frame, self.ee_frame)
-        error = current.translation - self.target.translation
-
+    def update(self, img, extrinsic):
+        self.integrate_img(img, extrinsic)
+        error = extrinsic.translation - self.target.translation
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self._predict_best_grasp()
+            self.best_grasp = self.predict_best_grasp()
             self.done = True
-        else:
-            self._integrate_latest_image()
-            return self.target
+        return self.target
 
 
 class RandomView(BasePolicy):
@@ -47,31 +43,25 @@ class RandomView(BasePolicy):
     Move the camera to a random viewpoint on a circle centered above the target.
     """
 
-    def __init__(self):
-        super().__init__()
-        self.r = 0.06
-        self.h = 0.3
+    def __init__(self, intrinsic):
+        super().__init__(intrinsic)
+        self.r = 0.06  # radius of the circle
+        self.h = 0.3  # distance above bbox center
 
     def activate(self, bbox):
         super().activate(bbox)
-        circle_center = (bbox.min + bbox.max) / 2.0
-        circle_center[2] += self.h
         t = np.random.uniform(np.pi, 3.0 * np.pi)
-        eye = circle_center + np.r_[self.r * np.cos(t), self.r * np.sin(t), 0]
-        center = (self.bbox.min + self.bbox.max) / 2.0
+        eye = self.center + np.r_[self.r * np.cos(t), self.r * np.sin(t), self.h]
         up = np.r_[1.0, 0.0, 0.0]
-        self.target = self.T_B_task * (self.T_EE_cam * look_at(eye, center, up)).inv()
+        self.target = look_at(eye, self.center, up)
 
-    def update(self):
-        current = tf.lookup(self.base_frame, self.ee_frame)
-        error = current.translation - self.target.translation
-
+    def update(self, img, extrinsic):
+        self.integrate_img(img, extrinsic)
+        error = extrinsic.translation - self.target.translation
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self._predict_best_grasp()
+            self.best_grasp = self.predict_best_grasp()
             self.done = True
-        else:
-            self._integrate_latest_image()
-            return self.target
+        return self.target
 
 
 class FixedTrajectory(BasePolicy):
@@ -79,9 +69,9 @@ class FixedTrajectory(BasePolicy):
     Follow a pre-defined circular trajectory centered above the target object.
     """
 
-    def __init__(self):
-        super().__init__()
-        self.r = 0.06
+    def __init__(self, intrinsic):
+        super().__init__(intrinsic)
+        self.r = 0.08
         self.h = 0.3
         self.duration = 6.0
         self.m = scipy.interpolate.interp1d([0, self.duration], [np.pi, 3.0 * np.pi])
@@ -89,21 +79,18 @@ class FixedTrajectory(BasePolicy):
     def activate(self, bbox):
         super().activate(bbox)
         self.tic = rospy.Time.now()
-        self.circle_center = (bbox.min + bbox.max) / 2.0
-        self.circle_center[2] += self.h
 
-    def update(self):
+    def update(self, img, extrinsic):
+        self.integrate_img(img, extrinsic)
         elapsed_time = (rospy.Time.now() - self.tic).to_sec()
         if elapsed_time > self.duration:
-            self.best_grasp = self._predict_best_grasp()
+            self.best_grasp = self.predict_best_grasp()
             self.done = True
         else:
-            self._integrate_latest_image()
             t = self.m(elapsed_time)
-            eye = self.circle_center + np.r_[self.r * np.cos(t), self.r * np.sin(t), 0]
-            center = (self.bbox.min + self.bbox.max) / 2.0
+            eye = self.center + np.r_[self.r * np.cos(t), self.r * np.sin(t), self.h]
             up = np.r_[1.0, 0.0, 0.0]
-            target = self.T_B_task * (self.T_EE_cam * look_at(eye, center, up)).inv()
+            target = look_at(eye, self.center, up)
             return target
 
 
@@ -114,24 +101,24 @@ class AlignmentView(BasePolicy):
 
     def activate(self, bbox):
         super().activate(bbox)
-        self._integrate_latest_image()
-        self.best_grasp = self._predict_best_grasp()
-        if self.best_grasp:
-            R, t = self.best_grasp.rotation, self.best_grasp.translation
-            center = t
+        self.target = None
+
+    def update(self, img, extrinsic):
+        self.integrate_img(img, extrinsic)
+
+        if not self.target:
+            grasp = self.predict_best_grasp()
+            if not grasp:
+                self.done = True
+                return
+            R, t = grasp.pose.rotation, grasp.pose.translation
             eye = R.apply([0.0, 0.0, -0.16]) + t
+            center = t
             up = np.r_[1.0, 0.0, 0.0]
-            self.target = (self.T_EE_cam * look_at(eye, center, up)).inv()
-        else:
-            self.done = True
+            self.target = look_at(eye, center, up)
 
-    def update(self):
-        current = tf.lookup(self.base_frame, self.ee_frame)
-        error = current.translation - self.target.translation
-
+        error = extrinsic.translation - self.target.translation
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self._predict_best_grasp()
+            self.best_grasp = self.predict_best_grasp()
             self.done = True
-        else:
-            self._integrate_latest_image()
-            return self.target
+        return self.target

@@ -1,15 +1,16 @@
 import numpy as np
 import rospy
 
-
 from robot_helpers.ros.rviz import *
 from robot_helpers.spatial import Transform
+from vgn.utils import *
 
 
 class Visualizer:
     def __init__(self, frame, topic="visualization_marker_array"):
         self.frame = frame
         self.marker_pub = rospy.Publisher(topic, MarkerArray, queue_size=1)
+        self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
 
     def clear(self):
         marker = Marker(action=Marker.DELETEALL)
@@ -21,6 +22,10 @@ class Visualizer:
         color = np.r_[0.8, 0.2, 0.2, 0.6]
         marker = create_cube_marker(self.frame, pose, scale, color, ns="bbox")
         self.draw([marker])
+
+    def scene_cloud(self, frame, cloud):
+        msg = to_cloud_msg(frame, np.asarray(cloud.points))
+        self.scene_cloud_pub.publish(msg)
 
     def path(self, poses):
         color = np.r_[31, 119, 180] / 255.0
