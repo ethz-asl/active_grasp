@@ -4,10 +4,10 @@ from geometry_msgs.msg import PoseStamped
 import numpy as np
 import rospy
 from sensor_msgs.msg import CameraInfo, Image
-import time
 
-from active_grasp.bbox import from_bbox_msg
-from active_grasp.policy import make
+from .bbox import from_bbox_msg
+from .policy import make
+from .timer import Timer
 from active_grasp.srv import Reset, ResetRequest
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
@@ -132,24 +132,3 @@ class GraspController:
         }
         info.update(Timer.timers)
         return info
-
-
-class Timer:
-    timers = dict()
-
-    def __init__(self, name):
-        self.name = name
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *exc_info):
-        self.stop()
-
-    def start(self):
-        self.tic = time.perf_counter()
-
-    def stop(self):
-        elapsed_time = time.perf_counter() - self.tic
-        self.timers[self.name] = elapsed_time

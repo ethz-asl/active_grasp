@@ -2,8 +2,7 @@ import numpy as np
 import scipy.interpolate
 import rospy
 
-from active_grasp.policy import BasePolicy
-from robot_helpers.ros import tf
+from .policy import BasePolicy
 from vgn.utils import look_at
 
 
