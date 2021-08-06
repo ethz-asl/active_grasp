@@ -13,7 +13,7 @@ class SingleView(BasePolicy):
 
     def update(self, img, extrinsic):
         self.integrate_img(img, extrinsic)
-        self.best_grasp = self.predict_best_grasp()
+        self.best_grasp = self.compute_best_grasp()
         self.done = True
 
 
@@ -32,7 +32,7 @@ class TopView(BasePolicy):
         self.integrate_img(img, extrinsic)
         error = extrinsic.translation - self.target.translation
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self.compute_best_grasp()
             self.done = True
         return self.target
 
@@ -58,7 +58,7 @@ class RandomView(BasePolicy):
         self.integrate_img(img, extrinsic)
         error = extrinsic.translation - self.target.translation
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self.compute_best_grasp()
             self.done = True
         return self.target
 
@@ -83,7 +83,7 @@ class FixedTrajectory(BasePolicy):
         self.integrate_img(img, extrinsic)
         elapsed_time = (rospy.Time.now() - self.tic).to_sec()
         if elapsed_time > self.duration:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self.compute_best_grasp()
             self.done = True
         else:
             t = self.m(elapsed_time)
@@ -106,7 +106,7 @@ class AlignmentView(BasePolicy):
         self.integrate_img(img, extrinsic)
 
         if not self.target:
-            grasp = self.predict_best_grasp()
+            grasp = self.compute_best_grasp()
             if not grasp:
                 self.done = True
                 return
@@ -118,6 +118,6 @@ class AlignmentView(BasePolicy):
 
         error = extrinsic.translation - self.target.translation
         if np.linalg.norm(error) < 0.01:
-            self.best_grasp = self.predict_best_grasp()
+            self.best_grasp = self.compute_best_grasp()
             self.done = True
         return self.target

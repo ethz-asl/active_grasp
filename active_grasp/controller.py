@@ -3,10 +3,9 @@ import cv_bridge
 from geometry_msgs.msg import PoseStamped
 import numpy as np
 import rospy
-from sensor_msgs.msg import CameraInfo, Image
+from sensor_msgs.msg import Image
 
 from .bbox import from_bbox_msg
-from .policy import make
 from .timer import Timer
 from active_grasp.srv import Reset, ResetRequest
 from robot_helpers.ros import tf
@@ -16,19 +15,18 @@ from robot_helpers.spatial import Rotation, Transform
 
 
 class GraspController:
-    def __init__(self, policy_id):
+    def __init__(self, policy):
+        self.policy = policy
         self.reset_env = rospy.ServiceProxy("reset", Reset)
         self.load_parameters()
         self.lookup_transforms()
         self.init_robot_connection()
         self.init_camera_stream()
-        self.make_policy(policy_id)
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
         self.ee_frame = rospy.get_param("~ee_frame_id")
         self.cam_frame = rospy.get_param("~camera/frame_id")
-        self.info_topic = rospy.get_param("~camera/info_topic")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
         self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
 
@@ -44,16 +42,11 @@ class GraspController:
         self.target_pose_pub.publish(msg)
 
     def init_camera_stream(self):
-        msg = rospy.wait_for_message(self.info_topic, CameraInfo, rospy.Duration(2.0))
-        self.intrinsic = from_camera_info_msg(msg)
         self.cv_bridge = cv_bridge.CvBridge()
         rospy.Subscriber(self.depth_topic, Image, self.sensor_cb, queue_size=1)
 
     def sensor_cb(self, msg):
         self.latest_depth_msg = msg
-
-    def make_policy(self, name):
-        self.policy = make(name, self.intrinsic)
 
     def run(self):
         bbox = self.reset()
