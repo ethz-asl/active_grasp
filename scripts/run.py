@@ -16,7 +16,7 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    policy = make(args.policy, args.rate)
+    policy = make(args.policy, args.rate, args.filter_grasps)
     controller = GraspController(policy)
     logger = Logger(args)
 
@@ -33,6 +33,7 @@ def create_parser():
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--logdir", type=Path, default="logs")
     parser.add_argument("--rate", type=int, default=5)
+    parser.add_argument("--filter-grasps", action="store_true")
     parser.add_argument("--seed", type=int, default=12)
     return parser
 
@@ -40,8 +41,14 @@ def create_parser():
 class Logger:
     def __init__(self, args):
         stamp = datetime.now().strftime("%y%m%d-%H%M%S")
-        descr = "policy={},rate={}".format(args.policy, args.rate)
-        self.path = args.logdir / (stamp + "_" + descr + ".csv")
+        name = "{}_policy={},rate={},filter-grasps={},seed={}.csv".format(
+            stamp,
+            args.policy,
+            args.rate,
+            args.filter_grasps,
+            args.seed,
+        )
+        self.path = args.logdir / name
 
     def log_run(self, info):
         df = pd.DataFrame.from_records([info])
