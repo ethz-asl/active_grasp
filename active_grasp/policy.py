@@ -85,6 +85,7 @@ class BasePolicy(Policy):
             # The next line prints a warning since some voxels have no grasp
             # predictions resulting in empty slices.
             qual = np.mean(self.qual_hist[:T, ...], axis=0, where=mask)
+            qual = np.nan_to_num(qual, copy=False)
             qual = threshold_quality(qual, 0.9)
             index_list = select_local_maxima(qual, 3)
 
