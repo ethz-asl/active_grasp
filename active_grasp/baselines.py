@@ -42,8 +42,8 @@ class RandomView(BasePolicy):
     Move the camera to a random viewpoint on a circle centered above the target.
     """
 
-    def __init__(self, intrinsic):
-        super().__init__(intrinsic)
+    def __init__(self, rate, filter_grasps):
+        super().__init__(rate, filter_grasps)
         self.r = 0.06  # radius of the circle
         self.h = 0.3  # distance above bbox center
 
@@ -68,8 +68,8 @@ class FixedTrajectory(BasePolicy):
     Follow a pre-defined circular trajectory centered above the target object.
     """
 
-    def __init__(self, intrinsic):
-        super().__init__(intrinsic)
+    def __init__(self, rate, filter_grasps):
+        super().__init__(rate, filter_grasps)
         self.r = 0.08
         self.h = 0.3
         self.duration = 6.0
