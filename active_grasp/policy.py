@@ -2,7 +2,6 @@ import numpy as np
 from sensor_msgs.msg import CameraInfo
 from pathlib import Path
 import rospy
-import warnings
 
 from .visualization import Visualizer
 from robot_helpers.ros import tf
