@@ -46,8 +46,19 @@ class NextBestView(BasePolicy):
             views.append(look_at(eye, target, up).inv())
         return views
 
+    def compute_ig(self, view, downsample=20):
+        res_x = int(self.intrinsic.width / downsample)
+        res_y = int(self.intrinsic.height / downsample)
+        fx = self.intrinsic.fx / downsample
+        fy = self.intrinsic.fy / downsample
+        cx = self.intrinsic.cx / downsample
+        cy = self.intrinsic.cy / downsample
 
-    def compute_ig(self, view):
+        for x in range(res_x):
+            for y in range(res_y):
+                d = np.r_[(x - cx) / fx, (y - cy) / fy, 1.0]
+                d = d / np.linalg.norm(d)
+                d = view.rotation.apply(d)
         return 1.0
 
     def compute_cost(self, view):
