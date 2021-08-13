@@ -1,7 +1,9 @@
+import itertools
 import numpy as np
+import rospy
 
 from .policy import BasePolicy
-from vgn.utils import look_at
+from vgn.utils import look_at, spherical_to_cartesian
 
 
 class NextBestView(BasePolicy):
@@ -33,9 +35,17 @@ class NextBestView(BasePolicy):
             return nbv
 
     def generate_viewpoints(self):
-        eye = np.r_[self.center[:2], self.center[2] + 0.3]
-        up = np.r_[1.0, 0.0, 0.0]
-        return [look_at(eye, self.center, up)]
+        r, h = 0.14, 0.2
+        thetas = np.arange(1, 4) * np.deg2rad(30)
+        phis = np.arange(1, 6) * np.deg2rad(60)
+        views = []
+        for theta, phi in itertools.product(thetas, phis):
+            eye = self.center + np.r_[0, 0, h] + spherical_to_cartesian(r, theta, phi)
+            target = self.center
+            up = np.r_[1.0, 0.0, 0.0]
+            views.append(look_at(eye, target, up).inv())
+        return views
+
 
     def compute_ig(self, view):
         return 1.0
