@@ -1,10 +1,13 @@
 from geometry_msgs.msg import PoseArray
+import matplotlib.colors
 import numpy as np
 import rospy
 
 from robot_helpers.ros.rviz import *
 from robot_helpers.spatial import Transform
 from vgn.utils import *
+
+cmap = matplotlib.colors.LinearSegmentedColormap.from_list("RedGreen", ["r", "g"])
 
 
 class Visualizer:
@@ -13,7 +16,6 @@ class Visualizer:
         self.marker_pub = rospy.Publisher(topic, MarkerArray, queue_size=1)
         self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
-        self.views_pub = rospy.Publisher("views", PoseArray, queue_size=1)
         self.grasps_pub = rospy.Publisher("grasps", PoseArray, queue_size=1)
 
     def clear(self):
@@ -85,8 +87,64 @@ class Visualizer:
         msg = to_cloud_msg(frame, np.asarray(cloud.points))
         self.scene_cloud_pub.publish(msg)
 
-    def views(self, views):
-        msg = PoseArray()
-        msg.header.frame_id = self.frame
-        msg.poses = [to_pose_msg(view) for view in views]
-        self.views_pub.publish(msg)
+    def views(self, intrinsic, views, values):
+        vmin, vmax = min(values), max(values)
+        scale = [0.002, 0.0, 0.0]
+        near, far = 0.0, 0.02
+        markers = []
+        for i, (view, value) in enumerate(zip(views, values)):
+            color = cmap((value - vmin) / (vmax - vmin))
+            markers.append(
+                _create_cam_view_marker(
+                    self.frame,
+                    view,
+                    scale,
+                    color,
+                    intrinsic,
+                    near,
+                    far,
+                    ns="views",
+                    id=i,
+                )
+            )
+        self.draw(markers)
+
+
+def _create_cam_view_marker(
+    frame, pose, scale, color, intrinsic, near, far, ns="", id=0
+):
+    marker = create_marker(Marker.LINE_LIST, frame, pose, scale, color, ns, id)
+    x_n = near * intrinsic.width / (2.0 * intrinsic.fx)
+    y_n = near * intrinsic.height / (2.0 * intrinsic.fy)
+    z_n = near
+    x_f = far * intrinsic.width / (2.0 * intrinsic.fx)
+    y_f = far * intrinsic.height / (2.0 * intrinsic.fy)
+    z_f = far
+    points = [
+        [x_n, y_n, z_n],
+        [-x_n, y_n, z_n],
+        [-x_n, y_n, z_n],
+        [-x_n, -y_n, z_n],
+        [-x_n, -y_n, z_n],
+        [x_n, -y_n, z_n],
+        [x_n, -y_n, z_n],
+        [x_n, y_n, z_n],
+        [x_f, y_f, z_f],
+        [-x_f, y_f, z_f],
+        [-x_f, y_f, z_f],
+        [-x_f, -y_f, z_f],
+        [-x_f, -y_f, z_f],
+        [x_f, -y_f, z_f],
+        [x_f, -y_f, z_f],
+        [x_f, y_f, z_f],
+        [x_n, y_n, z_n],
+        [x_f, y_f, z_f],
+        [-x_n, y_n, z_n],
+        [-x_f, y_f, z_f],
+        [-x_n, -y_n, z_n],
+        [-x_f, -y_f, z_f],
+        [x_n, -y_n, z_n],
+        [x_f, -y_f, z_f],
+    ]
+    marker.points = [to_point_msg(p) for p in points]
+    return marker

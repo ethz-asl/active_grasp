@@ -43,6 +43,7 @@ class BasePolicy(Policy):
 
         self.center = 0.5 * (bbox.min + bbox.max)
         self.T_base_task = Transform.translation(self.center - np.full(3, 0.15))
+        self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
         rospy.sleep(1.0)  # wait for the transform to be published
 

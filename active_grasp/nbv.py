@@ -30,12 +30,14 @@ class NextBestView(BasePolicy):
 
         # Generate viewpoints
         views = self.generate_viewpoints()
-        self.visualizer.views(views)
 
         # Evaluate viewpoints
         gains = [self.compute_ig(v) for v in views]
         costs = [self.compute_cost(v) for v in views]
         utilities = gains / np.sum(gains) - costs / np.sum(costs)
+
+        # Visualize
+        self.visualizer.views(self.intrinsic, views, utilities)
 
         # Determine next-best-view
         nbv = views[np.argmax(utilities)]
