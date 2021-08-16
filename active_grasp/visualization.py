@@ -13,6 +13,7 @@ class Visualizer:
         self.marker_pub = rospy.Publisher(topic, MarkerArray, queue_size=1)
         self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
+        self.views_pub = rospy.Publisher("views", PoseArray, queue_size=1)
         self.grasps_pub = rospy.Publisher("grasps", PoseArray, queue_size=1)
 
     def clear(self):
@@ -24,11 +25,32 @@ class Visualizer:
         msg.header.frame_id = self.frame
         self.grasps_pub.publish(msg)
 
+    def draw(self, markers):
+        self.marker_pub.publish(MarkerArray(markers=markers))
+
     def bbox(self, bbox):
         pose = Transform.translation((bbox.min + bbox.max) / 2.0)
         scale = bbox.max - bbox.min
         color = np.r_[0.8, 0.2, 0.2, 0.6]
         marker = create_cube_marker(self.frame, pose, scale, color, ns="bbox")
+        self.draw([marker])
+
+    def grasps(self, grasps):
+        msg = PoseArray()
+        msg.header.frame_id = self.frame
+        msg.poses = [to_pose_msg(grasp.pose) for grasp in grasps]
+        self.grasps_pub.publish(msg)
+
+    def lines(self, lines):
+        marker = create_line_list_marker(
+            self.frame,
+            Transform.identity(),
+            [0.005, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            lines,
+            "rays",
+            0,
+        )
         self.draw([marker])
 
     def path(self, poses):
@@ -54,20 +76,17 @@ class Visualizer:
         )
         self.draw([spheres, lines])
 
-    def draw(self, markers):
-        self.marker_pub.publish(MarkerArray(markers=markers))
-
-    def scene_cloud(self, frame, cloud):
-        msg = to_cloud_msg(frame, np.asarray(cloud.points))
-        self.scene_cloud_pub.publish(msg)
-
     def quality(self, frame, voxel_size, quality):
         points, values = grid_to_map_cloud(voxel_size, quality, threshold=0.8)
         msg = to_cloud_msg(frame, points, intensities=values)
         self.quality_pub.publish(msg)
 
-    def grasps(self, grasps):
+    def scene_cloud(self, frame, cloud):
+        msg = to_cloud_msg(frame, np.asarray(cloud.points))
+        self.scene_cloud_pub.publish(msg)
+
+    def views(self, views):
         msg = PoseArray()
         msg.header.frame_id = self.frame
-        msg.poses = [to_pose_msg(grasp.pose) for grasp in grasps]
-        self.grasps_pub.publish(msg)
+        msg.poses = [to_pose_msg(view) for view in views]
+        self.views_pub.publish(msg)

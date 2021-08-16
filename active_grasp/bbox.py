@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 
 import active_grasp.msg
@@ -8,6 +9,10 @@ class AABBox:
     def __init__(self, bbox_min, bbox_max):
         self.min = bbox_min
         self.max = bbox_max
+
+    @property
+    def corners(self):
+        return list(itertools.product(*np.vstack((self.min, self.max)).T))
 
     def is_inside(self, p):
         return np.all(p > self.min) and np.all(p < self.max)

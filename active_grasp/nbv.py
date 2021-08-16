@@ -1,9 +1,20 @@
 import itertools
 import numpy as np
+from robot_helpers.perception import CameraIntrinsic
+from robot_helpers.spatial import Transform
 import rospy
 
 from .policy import BasePolicy
 from vgn.utils import look_at, spherical_to_cartesian
+
+
+class Ray:
+    def __init__(self, origin, direction):
+        self.o = origin
+        self.d = direction
+
+    def __call__(self, t):
+        return self.o + self.d * t
 
 
 class NextBestView(BasePolicy):
@@ -19,6 +30,7 @@ class NextBestView(BasePolicy):
 
         # Generate viewpoints
         views = self.generate_viewpoints()
+        self.visualizer.views(views)
 
         # Evaluate viewpoints
         gains = [self.compute_ig(v) for v in views]
@@ -47,18 +59,25 @@ class NextBestView(BasePolicy):
         return views
 
     def compute_ig(self, view, downsample=20):
-        res_x = int(self.intrinsic.width / downsample)
-        res_y = int(self.intrinsic.height / downsample)
         fx = self.intrinsic.fx / downsample
         fy = self.intrinsic.fy / downsample
         cx = self.intrinsic.cx / downsample
         cy = self.intrinsic.cy / downsample
 
-        for x in range(res_x):
-            for y in range(res_y):
-                d = np.r_[(x - cx) / fx, (y - cy) / fy, 1.0]
-                d = d / np.linalg.norm(d)
-                d = view.rotation.apply(d)
+        T_cam_base = view.inv()
+        corners = np.array([T_cam_base.apply(p) for p in self.bbox.corners]).T
+        u = (fx * corners[0] / corners[2] + cx).round().astype(int)
+        v = (fy * corners[1] / corners[2] + cy).round().astype(int)
+        u_min, u_max = u.min(), u.max()
+        v_min, v_max = v.min(), v.max()
+
+        for u in range(u_min, u_max):
+            for v in range(v_min, v_max):
+                direction = np.r_[(u - cx) / fx, (v - cy) / fy, 1.0]
+                direction = direction / np.linalg.norm(direction)
+                direction = view.rotation.apply(direction)
+                ray = Ray(view.translation, direction)
+
         return 1.0
 
     def compute_cost(self, view):
