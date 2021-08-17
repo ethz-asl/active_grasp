@@ -63,8 +63,8 @@ class NextBestView(BasePolicy):
         u_min, u_max = u.min(), u.max()
         v_min, v_max = v.min(), v.max()
 
-        t_min = np.min(corners[2])
-        t_max = np.max(corners[2])  # TODO This bound might be a bit too short
+        t_min = 0.2
+        t_max = corners[2].max()  # TODO This bound might be a bit too short
         t_step = 0.01
 
         view = self.T_task_base * view  # We'll work in the task frame from now on
