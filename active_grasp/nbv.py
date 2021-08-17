@@ -37,7 +37,7 @@ class NextBestView(BasePolicy):
         utilities = gains / np.sum(gains) - costs / np.sum(costs)
 
         # Visualize
-        self.visualizer.views(self.intrinsic, views, utilities)
+        self.visualizer.views(self.base_frame, self.intrinsic, views, utilities)
 
         # Determine next-best-view
         nbv = views[np.argmax(utilities)]

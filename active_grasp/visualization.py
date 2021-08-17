@@ -11,55 +11,61 @@ cmap = matplotlib.colors.LinearSegmentedColormap.from_list("RedGreen", ["r", "g"
 
 
 class Visualizer:
-    def __init__(self, frame, topic="visualization_marker_array"):
-        self.frame = frame
+    def __init__(self, topic="visualization_marker_array"):
         self.marker_pub = rospy.Publisher(topic, MarkerArray, queue_size=1)
         self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
+        self.map_cloud_pub = rospy.Publisher("map_cloud", PointCloud2, queue_size=1)
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
         self.grasps_pub = rospy.Publisher("grasps", PoseArray, queue_size=1)
 
     def clear(self):
         self.draw([Marker(action=Marker.DELETEALL)])
-        msg = to_cloud_msg(self.frame, np.array([]))
+        msg = to_cloud_msg("panda_link0", np.array([]))
         self.scene_cloud_pub.publish(msg)
+        self.map_cloud_pub.publish(msg)
         self.quality_pub.publish(msg)
         msg = PoseArray()
-        msg.header.frame_id = self.frame
+        msg.header.frame_id = "panda_link0"
         self.grasps_pub.publish(msg)
 
     def draw(self, markers):
         self.marker_pub.publish(MarkerArray(markers=markers))
 
-    def bbox(self, bbox):
+    def bbox(self, frame, bbox):
         pose = Transform.translation((bbox.min + bbox.max) / 2.0)
         scale = bbox.max - bbox.min
         color = np.r_[0.8, 0.2, 0.2, 0.6]
-        marker = create_cube_marker(self.frame, pose, scale, color, ns="bbox")
+        marker = create_cube_marker(frame, pose, scale, color, ns="bbox")
         self.draw([marker])
 
-    def grasps(self, grasps):
+    def grasps(self, frame, grasps):
         msg = PoseArray()
-        msg.header.frame_id = self.frame
+        msg.header.frame_id = frame
         msg.poses = [to_pose_msg(grasp.pose) for grasp in grasps]
         self.grasps_pub.publish(msg)
 
-    def lines(self, lines):
+    def rays(self, frame, origin, directions, t_max=1.0):
+        lines = [[origin, origin + t_max * direction] for direction in directions]
         marker = create_line_list_marker(
-            self.frame,
+            frame,
             Transform.identity(),
             [0.005, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
+            [0.6, 0.6, 0.6],
             lines,
             "rays",
-            0,
         )
         self.draw([marker])
 
-    def path(self, poses):
+    def map_cloud(self, frame, voxel_size, tsdf):
+        points, values = grid_to_map_cloud(voxel_size, tsdf, threshold=0.0)
+        msg = to_cloud_msg(frame, points, intensities=values)
+        self.map_cloud_pub.publish(msg)
+
+    def path(self, frame, poses):
         color = np.r_[31, 119, 180] / 255.0
         points = [p.translation for p in poses]
         spheres = create_sphere_list_marker(
-            self.frame,
+            frame,
             Transform.identity(),
             np.full(3, 0.01),
             color,
@@ -68,7 +74,7 @@ class Visualizer:
             0,
         )
         lines = create_line_strip_marker(
-            self.frame,
+            frame,
             Transform.identity(),
             [0.005, 0.0, 0.0],
             color,
@@ -77,6 +83,16 @@ class Visualizer:
             1,
         )
         self.draw([spheres, lines])
+
+    def point(self, frame, point):
+        marker = create_sphere_marker(
+            frame,
+            Transform.translation(point),
+            np.full(3, 0.01),
+            [1, 0, 0],
+            "point",
+        )
+        self.draw([marker])
 
     def quality(self, frame, voxel_size, quality):
         points, values = grid_to_map_cloud(voxel_size, quality, threshold=0.8)
@@ -87,30 +103,29 @@ class Visualizer:
         msg = to_cloud_msg(frame, np.asarray(cloud.points))
         self.scene_cloud_pub.publish(msg)
 
-    def views(self, intrinsic, views, values):
+    def views(self, frame, intrinsic, views, values):
         vmin, vmax = min(values), max(values)
         scale = [0.002, 0.0, 0.0]
         near, far = 0.0, 0.02
         markers = []
         for i, (view, value) in enumerate(zip(views, values)):
             color = cmap((value - vmin) / (vmax - vmin))
-            markers.append(
-                _create_cam_view_marker(
-                    self.frame,
-                    view,
-                    scale,
-                    color,
-                    intrinsic,
-                    near,
-                    far,
-                    ns="views",
-                    id=i,
-                )
+            marker = create_cam_view_marker(
+                frame,
+                view,
+                scale,
+                color,
+                intrinsic,
+                near,
+                far,
+                ns="views",
+                id=i,
             )
+            markers.append(marker)
         self.draw(markers)
 
 
-def _create_cam_view_marker(
+def create_cam_view_marker(
     frame, pose, scale, color, intrinsic, near, far, ns="", id=0
 ):
     marker = create_marker(Marker.LINE_LIST, frame, pose, scale, color, ns, id)

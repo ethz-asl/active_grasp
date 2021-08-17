@@ -89,7 +89,7 @@ class GraspController:
         self.send_cmd(
             T_base_grasp * Transform.translation([0, 0, -0.05]) * self.T_grasp_ee
         )
-        rospy.sleep(3.0)
+        rospy.sleep(4.0)  # TODO
 
         # Approach grasp pose.
         self.send_cmd(T_base_grasp * self.T_grasp_ee)
