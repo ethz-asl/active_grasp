@@ -16,7 +16,6 @@ class Visualizer:
         self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
         self.map_cloud_pub = rospy.Publisher("map_cloud", PointCloud2, queue_size=1)
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
-        self.grasps_pub = rospy.Publisher("grasps", PoseArray, queue_size=1)
 
     def clear(self):
         self.draw([Marker(action=Marker.DELETEALL)])
@@ -24,9 +23,6 @@ class Visualizer:
         self.scene_cloud_pub.publish(msg)
         self.map_cloud_pub.publish(msg)
         self.quality_pub.publish(msg)
-        msg = PoseArray()
-        msg.header.frame_id = "panda_link0"
-        self.grasps_pub.publish(msg)
 
     def draw(self, markers):
         self.marker_pub.publish(MarkerArray(markers=markers))
@@ -39,10 +35,11 @@ class Visualizer:
         self.draw([marker])
 
     def grasps(self, frame, grasps):
-        msg = PoseArray()
-        msg.header.frame_id = frame
-        msg.poses = [to_pose_msg(grasp.pose) for grasp in grasps]
-        self.grasps_pub.publish(msg)
+        markers = []
+        for i, grasp in enumerate(grasps):
+            color = [1.0, 0.0, 0.0]  # TODO choose color based on score
+            markers += create_grasp_markers(frame, grasp, color, "grasps", 4 * i)
+        self.draw(markers)
 
     def rays(self, frame, origin, directions, t_max=1.0):
         lines = [[origin, origin + t_max * direction] for direction in directions]
@@ -163,3 +160,33 @@ def create_cam_view_marker(
     ]
     marker.points = [to_point_msg(p) for p in points]
     return marker
+
+
+def create_grasp_markers(
+    frame,
+    grasp,
+    color,
+    ns,
+    id,
+    finger_depth=0.05,
+    radius=0.005,
+):
+    w, d = grasp.width, finger_depth
+
+    pose = grasp.pose * Transform.translation([0.0, -w / 2, d / 2])
+    scale = [radius, radius, d]
+    left = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id)
+
+    pose = grasp.pose * Transform.translation([0.0, w / 2, d / 2])
+    scale = [radius, radius, d]
+    right = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id + 1)
+
+    pose = grasp.pose * Transform.translation([0.0, 0.0, -d / 4])
+    scale = [radius, radius, d / 2]
+    wrist = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id + 2)
+
+    pose = grasp.pose * Transform.rotation(Rotation.from_rotvec([np.pi / 2, 0, 0]))
+    scale = [radius, radius, w]
+    palm = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id + 3)
+
+    return [left, right, wrist, palm]
