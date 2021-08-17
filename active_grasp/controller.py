@@ -31,6 +31,7 @@ class GraspController:
         self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
 
     def lookup_transforms(self):
+        tf.init()
         self.T_ee_cam = tf.lookup(self.ee_frame, self.cam_frame)
 
     def init_robot_connection(self):
