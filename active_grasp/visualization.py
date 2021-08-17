@@ -46,7 +46,7 @@ class Visualizer:
         marker = create_line_list_marker(
             frame,
             Transform.identity(),
-            [0.005, 0.0, 0.0],
+            [0.002, 0.0, 0.0],
             [0.6, 0.6, 0.6],
             lines,
             "rays",
@@ -86,7 +86,7 @@ class Visualizer:
             frame,
             Transform.translation(point),
             np.full(3, 0.01),
-            [1, 0, 0],
+            [0, 0, 1],
             "point",
         )
         self.draw([marker])

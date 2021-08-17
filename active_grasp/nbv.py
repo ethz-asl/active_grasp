@@ -1,20 +1,9 @@
 import itertools
 import numpy as np
-from robot_helpers.perception import CameraIntrinsic
-from robot_helpers.spatial import Transform
 import rospy
 
 from .policy import BasePolicy
 from vgn.utils import look_at, spherical_to_cartesian
-
-
-class Ray:
-    def __init__(self, origin, direction):
-        self.o = origin
-        self.d = direction
-
-    def __call__(self, t):
-        return self.o + self.d * t
 
 
 class NextBestView(BasePolicy):
@@ -45,8 +34,9 @@ class NextBestView(BasePolicy):
         if self.check_done():
             self.best_grasp = self.compute_best_grasp()
             self.done = True
-        else:
-            return nbv.inv()  # the controller expects T_cam_base
+            return
+
+        return nbv.inv()  # the controller expects T_cam_base
 
     def generate_viewpoints(self):
         r, h = 0.14, 0.2
@@ -73,12 +63,28 @@ class NextBestView(BasePolicy):
         u_min, u_max = u.min(), u.max()
         v_min, v_max = v.min(), v.max()
 
+        t_min = np.min(corners[2])
+        t_max = np.max(corners[2])  # TODO This bound might be a bit too short
+        t_step = 0.01
+
+        view = self.T_task_base * view  # We'll work in the task frame from now on
+
         for u in range(u_min, u_max):
             for v in range(v_min, v_max):
+                origin = view.translation
                 direction = np.r_[(u - cx) / fx, (v - cy) / fy, 1.0]
-                direction = direction / np.linalg.norm(direction)
-                direction = view.rotation.apply(direction)
-                ray = Ray(view.translation, direction)
+                direction = view.rotation.apply(direction / np.linalg.norm(direction))
+
+                self.visualizer.rays(self.task_frame, origin, [direction])
+                rospy.sleep(0.1)
+
+                t = t_min
+                while t < t_max:
+                    p = origin + t * direction
+                    t += t_step
+
+                    self.visualizer.point(self.task_frame, p)
+                    rospy.sleep(0.1)
 
         return 1.0
 
@@ -86,4 +92,4 @@ class NextBestView(BasePolicy):
         return 1.0
 
     def check_done(self):
-        return len(self.viewpoints) == 20
+        return len(self.viewpoints) == 4
