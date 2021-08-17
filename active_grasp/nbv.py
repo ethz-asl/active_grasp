@@ -46,7 +46,7 @@ class NextBestView(BasePolicy):
             self.best_grasp = self.compute_best_grasp()
             self.done = True
         else:
-            return nbv
+            return nbv.inv()  # the controller expects T_cam_base
 
     def generate_viewpoints(self):
         r, h = 0.14, 0.2
