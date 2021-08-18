@@ -69,6 +69,12 @@ class NextBestView(BasePolicy):
 
         view = self.T_task_base * view  # We'll work in the task frame from now on
 
+        tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+
+        def get_voxel_at(p):
+            index = (p / voxel_size).astype(int)
+            return index if (index >= 0).all() and (index < 40).all() else None
+
         for u in range(u_min, u_max):
             for v in range(v_min, v_max):
                 origin = view.translation
@@ -78,7 +84,7 @@ class NextBestView(BasePolicy):
                 self.visualizer.rays(self.task_frame, origin, [direction])
                 rospy.sleep(0.1)
 
-                t = t_min
+                t, tsdf_prev = t_min, -1.0
                 while t < t_max:
                     p = origin + t * direction
                     t += t_step
@@ -86,6 +92,13 @@ class NextBestView(BasePolicy):
                     self.visualizer.point(self.task_frame, p)
                     rospy.sleep(0.1)
 
+                    index = get_voxel_at(p)
+                    if index is not None:
+                        i, j, k = index
+                        tsdf = -1 + 2 * tsdf_grid[i, j, k]  # Open3D maps tsdf to [0,1]
+                        if tsdf * tsdf_prev < 0 and tsdf_prev > -1:  # Crossed a surface
+                            break
+                        tsdf_prev = tsdf
         return 1.0
 
     def compute_cost(self, view):
