@@ -9,6 +9,8 @@ from vgn.utils import look_at, spherical_to_cartesian
 class NextBestView(BasePolicy):
     def __init__(self, rate, filter_grasps):
         super().__init__(rate, filter_grasps)
+        self.max_viewpoints = 20
+        self.min_gain = 10.0
 
     def activate(self, bbox):
         super().activate(bbox)
@@ -29,9 +31,10 @@ class NextBestView(BasePolicy):
         self.visualizer.views(self.base_frame, self.intrinsic, views, utilities)
 
         # Determine next-best-view
-        nbv = views[np.argmax(utilities)]
+        i = np.argmax(utilities)
+        nbv, g = views[i], gains[i]
 
-        if self.check_done():
+        if self.check_done(g):
             self.best_grasp = self.compute_best_grasp()
             self.done = True
             return
@@ -114,5 +117,5 @@ class NextBestView(BasePolicy):
     def compute_cost(self, view):
         return 1.0
 
-    def check_done(self):
-        return len(self.viewpoints) == 4
+    def check_done(self, gain):
+        return len(self.viewpoints) > self.max_viewpoints or gain < self.min_gain
