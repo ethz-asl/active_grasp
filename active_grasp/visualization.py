@@ -13,8 +13,18 @@ cmap = matplotlib.colors.LinearSegmentedColormap.from_list("RedGreen", ["r", "g"
 class Visualizer:
     def __init__(self, topic="visualization_marker_array"):
         self.marker_pub = rospy.Publisher(topic, MarkerArray, queue_size=1)
-        self.scene_cloud_pub = rospy.Publisher("scene_cloud", PointCloud2, queue_size=1)
-        self.map_cloud_pub = rospy.Publisher("map_cloud", PointCloud2, queue_size=1)
+        self.scene_cloud_pub = rospy.Publisher(
+            "scene_cloud",
+            PointCloud2,
+            latch=True,
+            queue_size=1,
+        )
+        self.map_cloud_pub = rospy.Publisher(
+            "map_cloud",
+            PointCloud2,
+            latch=True,
+            queue_size=1,
+        )
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
 
     def clear(self):
