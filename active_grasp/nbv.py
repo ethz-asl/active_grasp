@@ -63,7 +63,7 @@ class NextBestView(BasePolicy):
         u_min, u_max = u.min(), u.max()
         v_min, v_max = v.min(), v.max()
 
-        t_min = 0.2
+        t_min = 0.1
         t_max = corners[2].max()  # TODO This bound might be a bit too short
         t_step = 0.01
 
@@ -75,22 +75,24 @@ class NextBestView(BasePolicy):
             index = (p / voxel_size).astype(int)
             return index if (index >= 0).all() and (index < 40).all() else None
 
+        voxel_indices = []
+
         for u in range(u_min, u_max):
             for v in range(v_min, v_max):
                 origin = view.translation
                 direction = np.r_[(u - cx) / fx, (v - cy) / fy, 1.0]
                 direction = view.rotation.apply(direction / np.linalg.norm(direction))
 
-                self.visualizer.rays(self.task_frame, origin, [direction])
-                rospy.sleep(0.1)
+                # self.visualizer.rays(self.task_frame, origin, [direction])
+                # rospy.sleep(0.01)
 
                 t, tsdf_prev = t_min, -1.0
                 while t < t_max:
                     p = origin + t * direction
                     t += t_step
 
-                    self.visualizer.point(self.task_frame, p)
-                    rospy.sleep(0.1)
+                    # self.visualizer.point(self.task_frame, p)
+                    # rospy.sleep(0.01)
 
                     index = get_voxel_at(p)
                     if index is not None:
@@ -98,8 +100,16 @@ class NextBestView(BasePolicy):
                         tsdf = -1 + 2 * tsdf_grid[i, j, k]  # Open3D maps tsdf to [0,1]
                         if tsdf * tsdf_prev < 0 and tsdf_prev > -1:  # Crossed a surface
                             break
+                        # TODO check whether the voxel lies within the bounding box ?
+                        voxel_indices.append(index)
                         tsdf_prev = tsdf
-        return 1.0
+
+        # Count rear side voxels
+        i, j, k = np.unique(voxel_indices, axis=0).T
+        tsdfs = tsdf_grid[i, j, k]
+        ig = np.logical_and(tsdfs > 0.0, tsdfs < 0.5).sum()
+
+        return ig
 
     def compute_cost(self, view):
         return 1.0
