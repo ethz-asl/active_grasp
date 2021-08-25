@@ -36,7 +36,7 @@ class BasePolicy(Policy):
         self.score_fn = lambda g: g.pose.translation[2]  # TODO
 
     def init_visualizer(self):
-        self.visualizer = Visualizer()
+        self.vis = Visualizer()
 
     def activate(self, bbox):
         self.bbox = bbox
@@ -60,8 +60,8 @@ class BasePolicy(Policy):
         self.done = False
         self.best_grasp = None
 
-        self.visualizer.clear()
-        self.visualizer.bbox(self.base_frame, bbox)
+        self.vis.clear()
+        self.vis.bbox(self.base_frame, bbox)
 
     def integrate_img(self, img, extrinsic):
         self.viewpoints.append(extrinsic.inv())
@@ -76,11 +76,11 @@ class BasePolicy(Policy):
             self.width_hist[t, ...] = out.width
 
             mean_qual = self.compute_mean_quality()
-            self.visualizer.quality(self.task_frame, voxel_size, mean_qual)
+            self.vis.quality(self.task_frame, voxel_size, mean_qual)
 
-        self.visualizer.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
-        self.visualizer.map_cloud(self.task_frame, voxel_size, tsdf_grid)
-        self.visualizer.path(self.base_frame, self.viewpoints)
+        self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
+        self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
+        self.vis.path(self.base_frame, self.viewpoints)
 
     def compute_best_grasp(self):
         if self.filter_grasps:
@@ -97,8 +97,8 @@ class BasePolicy(Policy):
         grasps = self.transform_and_reject(grasps)
         grasps = sort_grasps(grasps, self.score_fn)
 
-        self.visualizer.quality(self.task_frame, self.tsdf.voxel_size, qual)
-        self.visualizer.grasps(self.base_frame, grasps)
+        self.vis.quality(self.task_frame, self.tsdf.voxel_size, qual)
+        self.vis.grasps(self.base_frame, grasps)
 
         return grasps[0] if len(grasps) > 0 else None
 

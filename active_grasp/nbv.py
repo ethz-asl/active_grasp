@@ -28,7 +28,7 @@ class NextBestView(BasePolicy):
         utilities = gains / np.sum(gains) - costs / np.sum(costs)
 
         # Visualize
-        self.visualizer.views(self.base_frame, self.intrinsic, views, utilities)
+        self.vis.views(self.base_frame, self.intrinsic, views, utilities)
 
         # Determine next-best-view
         i = np.argmax(utilities)
@@ -86,7 +86,7 @@ class NextBestView(BasePolicy):
                 direction = np.r_[(u - cx) / fx, (v - cy) / fy, 1.0]
                 direction = view.rotation.apply(direction / np.linalg.norm(direction))
 
-                # self.visualizer.rays(self.task_frame, origin, [direction])
+                # self.vis.rays(self.task_frame, origin, [direction])
                 # rospy.sleep(0.01)
 
                 t, tsdf_prev = t_min, -1.0
@@ -94,7 +94,7 @@ class NextBestView(BasePolicy):
                     p = origin + t * direction
                     t += t_step
 
-                    # self.visualizer.point(self.task_frame, p)
+                    # self.vis.point(self.task_frame, p)
                     # rospy.sleep(0.01)
 
                     index = get_voxel_at(p)

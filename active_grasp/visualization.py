@@ -63,9 +63,10 @@ class Visualizer:
         )
         self.draw([marker])
 
-    def map_cloud(self, frame, voxel_size, tsdf):
-        points, values = grid_to_map_cloud(voxel_size, tsdf, threshold=0.0)
-        msg = to_cloud_msg(frame, points, intensities=values)
+    def map_cloud(self, frame, cloud):
+        points = np.asarray(cloud.points)
+        distances = np.expand_dims(np.asarray(cloud.colors)[:, 0], 1)
+        msg = to_cloud_msg(frame, points, distances=distances)
         self.map_cloud_pub.publish(msg)
 
     def path(self, frame, poses):
