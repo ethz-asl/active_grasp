@@ -39,6 +39,7 @@ class Policy:
         self.tsdf = UniformTSDFVolume(0.3, 40)
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
 
+        self.views = []
         self.best_grasp = None
         self.done = False
 
@@ -65,21 +66,19 @@ class Policy:
         return grasps[indices], scores[indices]
 
     def score_fn(self, grasp):
-        # return grasp.quality
-        return grasp.pose.translation[2]
+        return grasp.quality
+        # return grasp.pose.translation[2]
 
     def update(sekf, img, extrinsic):
         raise NotImplementedError
 
 
 class SingleViewPolicy(Policy):
-    """Plan grasps from a single view of the target object."""
-
     def update(self, img, extrinsic):
         error = extrinsic.translation - self.target.translation
 
         if np.linalg.norm(error) < 0.01:
-            self.views = [extrinsic.inv()]
+            self.views.append(extrinsic.inv())
 
             self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
             tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
@@ -93,12 +92,36 @@ class SingleViewPolicy(Policy):
             grasps, scores = self.sort_grasps(grasps)
 
             self.vis.grasps(self.base_frame, grasps, scores)
-            rospy.sleep(1.0)
 
             self.best_grasp = grasps[0] if len(grasps) > 0 else None
             self.done = True
         else:
             return self.target
+
+
+class MultiViewPolicy(Policy):
+    def __init__(self, rate):
+        super().__init__(rate)
+        self.preempt = True
+
+    def integrate(self, img, extrinsic):
+        self.views.append(extrinsic.inv())
+        self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
+
+        self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
+        self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
+        self.vis.path(self.base_frame, self.views)
+
+        tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+        out = self.vgn.predict(tsdf_grid)
+
+        grasps = select_grid(voxel_size, out, threshold=0.95)
+        grasps, scores = self.sort_grasps(grasps)
+
+        if len(grasps) > 0:
+            self.best_grasp = grasps[0]
+
+        self.vis.grasps(self.base_frame, grasps, scores)
 
 
 registry = {}
