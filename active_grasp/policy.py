@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.core.fromnumeric import sort
 from sensor_msgs.msg import CameraInfo
 from pathlib import Path
 import rospy
@@ -12,17 +13,8 @@ from vgn.utils import *
 
 
 class Policy:
-    def activate(self, bbox):
-        raise NotImplementedError
-
-    def update(self, img, extrinsic):
-        raise NotImplementedError
-
-
-class BasePolicy(Policy):
-    def __init__(self, rate=5, filter_grasps=False):
+    def __init__(self, rate=5):
         self.rate = rate
-        self.filter_grasps = filter_grasps
         self.load_parameters()
         self.init_visualizer()
 
@@ -32,8 +24,6 @@ class BasePolicy(Policy):
         info_topic = rospy.get_param("active_grasp/camera/info_topic")
         msg = rospy.wait_for_message(info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
-        self.vgn = VGN(Path(rospy.get_param("vgn/model")))
-        self.score_fn = lambda g: g.pose.translation[2]  # TODO
 
     def init_visualizer(self):
         self.vis = Visualizer()
@@ -41,91 +31,74 @@ class BasePolicy(Policy):
     def activate(self, bbox):
         self.bbox = bbox
 
-        self.center = 0.5 * (bbox.min + bbox.max)
-        self.T_base_task = Transform.translation(self.center - np.full(3, 0.15))
-        self.T_task_base = self.T_base_task.inv()
-        tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
-        rospy.sleep(1.0)  # wait for the transform to be published
-
-        N, self.T = 40, 10
-        grid_shape = (N,) * 3
-
-        self.tsdf = UniformTSDFVolume(0.3, N)
-
-        self.qual_hist = np.zeros((self.T,) + grid_shape, np.float32)
-        self.rot_hist = np.zeros((self.T, 4) + grid_shape, np.float32)
-        self.width_hist = np.zeros((self.T,) + grid_shape, np.float32)
-
-        self.viewpoints = []
-        self.done = False
-        self.best_grasp = None
+        self.calibrate_task_frame()
 
         self.vis.clear()
         self.vis.bbox(self.base_frame, bbox)
 
-    def integrate_img(self, img, extrinsic):
-        self.viewpoints.append(extrinsic.inv())
-        self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
-        tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+        self.tsdf = UniformTSDFVolume(0.3, 40)
+        self.vgn = VGN(Path(rospy.get_param("vgn/model")))
 
-        if self.filter_grasps:
-            out = self.vgn.predict(self.tsdf.get_grid())
-            t = (len(self.viewpoints) - 1) % self.T
-            self.qual_hist[t, ...] = out.qual
-            self.rot_hist[t, ...] = out.rot
-            self.width_hist[t, ...] = out.width
+        self.best_grasp = None
+        self.done = False
 
-            mean_qual = self.compute_mean_quality()
-            self.vis.quality(self.task_frame, voxel_size, mean_qual)
+    def calibrate_task_frame(self):
+        self.center = 0.5 * (self.bbox.min + self.bbox.max)
+        self.T_base_task = Transform.translation(self.center - np.full(3, 0.15))
+        self.T_task_base = self.T_base_task.inv()
+        tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
+        rospy.sleep(0.1)
 
-        self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
-        self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
-        self.vis.path(self.base_frame, self.viewpoints)
+    def sort_grasps(self, in_grasps):
+        grasps, scores = [], []
 
-    def compute_best_grasp(self):
-        if self.filter_grasps:
-            qual = self.compute_mean_quality()
-            index_list = select_local_maxima(qual, 0.9, 3)
-            grasps = [g for i in index_list if (g := self.select_mean_at(i))]
-        else:
-            out = self.vgn.predict(self.tsdf.get_grid())
-            qual = out.qual
-            index_list = select_local_maxima(qual, 0.9, 3)
-            grasps = [select_at(out, i) for i in index_list]
-
-        grasps = [from_voxel_coordinates(g, self.tsdf.voxel_size) for g in grasps]
-        grasps = self.transform_and_reject(grasps)
-        grasps = sort_grasps(grasps, self.score_fn)
-
-        self.vis.quality(self.task_frame, self.tsdf.voxel_size, qual)
-        self.vis.grasps(self.base_frame, grasps)
-
-        return grasps[0] if len(grasps) > 0 else None
-
-    def compute_mean_quality(self):
-        qual = np.mean(self.qual_hist, axis=0, where=self.qual_hist > 0.0)
-        return np.nan_to_num(qual, copy=False)  # mean of empty slices returns nan
-
-    def select_mean_at(self, index):
-        i, j, k = index
-        ts = np.flatnonzero(self.qual_hist[:, i, j, k])
-        if len(ts) < 3:
-            return
-        ori = Rotation.from_quat([self.rot_hist[t, :, i, j, k] for t in ts])
-        pos = np.array([i, j, k], dtype=np.float64)
-        width = self.width_hist[ts, i, j, k].mean()
-        qual = self.qual_hist[ts, i, j, k].mean()
-        return Grasp(Transform(ori.mean(), pos), width, qual)
-
-    def transform_and_reject(self, grasps):
-        result = []
-        for grasp in grasps:
+        for grasp in in_grasps:
             pose = self.T_base_task * grasp.pose
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
-                result.append(grasp)
-        return result
+                grasps.append(grasp)
+                scores.append(self.score_fn(grasp))
+
+        grasps, scores = np.asarray(grasps), np.asarray(scores)
+        indices = np.argsort(-scores)
+        return grasps[indices], scores[indices]
+
+    def score_fn(self, grasp):
+        # return grasp.quality
+        return grasp.pose.translation[2]
+
+    def update(sekf, img, extrinsic):
+        raise NotImplementedError
+
+
+class SingleViewPolicy(Policy):
+    """Plan grasps from a single view of the target object."""
+
+    def update(self, img, extrinsic):
+        error = extrinsic.translation - self.target.translation
+
+        if np.linalg.norm(error) < 0.01:
+            self.views = [extrinsic.inv()]
+
+            self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
+            tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+            self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
+            self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
+
+            out = self.vgn.predict(tsdf_grid)
+            self.vis.quality(self.task_frame, voxel_size, out.qual)
+
+            grasps = select_grid(voxel_size, out, threshold=0.95)
+            grasps, scores = self.sort_grasps(grasps)
+
+            self.vis.grasps(self.base_frame, grasps, scores)
+            rospy.sleep(1.0)
+
+            self.best_grasp = grasps[0] if len(grasps) > 0 else None
+            self.done = True
+        else:
+            return self.target
 
 
 registry = {}

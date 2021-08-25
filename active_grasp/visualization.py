@@ -33,6 +33,7 @@ class Visualizer:
         self.scene_cloud_pub.publish(msg)
         self.map_cloud_pub.publish(msg)
         self.quality_pub.publish(msg)
+        rospy.sleep(0.1)
 
     def draw(self, markers):
         self.marker_pub.publish(MarkerArray(markers=markers))
@@ -44,10 +45,14 @@ class Visualizer:
         marker = create_cube_marker(frame, pose, scale, color, ns="bbox")
         self.draw([marker])
 
-    def grasps(self, frame, grasps):
+    def grasps(self, frame, grasps, scores):
+        if len(grasps) == 0:
+            return
+
+        smin, smax = min(scores), max(scores)
         markers = []
-        for i, grasp in enumerate(grasps):
-            color = [1.0, 0.0, 0.0]  # TODO choose color based on score
+        for i, (grasp, score) in enumerate(zip(grasps, scores)):
+            color = cmap((score - smin) / (smax - smin))
             markers += create_grasp_markers(frame, grasp, color, "grasps", 4 * i)
         self.draw(markers)
 
@@ -103,7 +108,8 @@ class Visualizer:
         self.draw([marker])
 
     def quality(self, frame, voxel_size, quality):
-        points, values = grid_to_map_cloud(voxel_size, quality, threshold=0.8)
+        points, values = grid_to_map_cloud(voxel_size, quality, threshold=0.9)
+        values = (values - 0.9) / (1.0 - 0.9)  # to increase contrast
         msg = to_cloud_msg(frame, points, intensities=values)
         self.quality_pub.publish(msg)
 

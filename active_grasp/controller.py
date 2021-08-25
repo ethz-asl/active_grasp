@@ -117,11 +117,11 @@ class GraspController:
         return T_base_grasp
 
     def collect_info(self, result):
-        points = [p.translation for p in self.policy.viewpoints]
+        points = [p.translation for p in self.policy.views]
         d = np.sum([np.linalg.norm(p2 - p1) for p1, p2 in zip(points, points[1:])])
         info = {
             "result": result,
-            "viewpoint_count": len(points),
+            "view_count": len(points),
             "distance": d,
         }
         info.update(Timer.timers)
