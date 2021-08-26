@@ -7,8 +7,8 @@ from geometry_msgs.msg import PoseStamped
 import numpy as np
 import rospy
 from sensor_msgs.msg import JointState, Image, CameraInfo
+import skimage.transform
 from threading import Thread
-import tf2_ros
 
 from active_grasp.bbox import to_bbox_msg
 from active_grasp.srv import *
@@ -199,9 +199,20 @@ class CameraPlugin(Plugin):
         self.info_pub.publish(msg)
 
         _, depth, _ = self.camera.get_image()
+        depth = apply_noise(depth)
+
         msg = self.cv_bridge.cv2_to_imgmsg(depth)
         msg.header.stamp = stamp
         self.depth_pub.publish(msg)
+
+
+def apply_noise(img, k=1000, theta=0.001, sigma=0.005, l=4.0):
+    # Multiplicative and additive noise
+    img *= np.random.gamma(k, theta)
+    h, w = img.shape
+    noise = np.random.randn(int(h / l), int(w / l)) * sigma
+    img += skimage.transform.resize(noise, img.shape, order=1, mode="constant")
+    return img
 
 
 def main():
