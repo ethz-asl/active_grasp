@@ -100,10 +100,6 @@ class SingleViewPolicy(Policy):
 
 
 class MultiViewPolicy(Policy):
-    def __init__(self, rate):
-        super().__init__(rate)
-        self.preempt = True
-
     def integrate(self, img, extrinsic):
         self.views.append(extrinsic.inv())
         self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
