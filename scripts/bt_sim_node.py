@@ -181,6 +181,12 @@ class CameraPlugin(Plugin):
         super().__init__(rate)
         self.camera = camera
         self.name = name
+        self.cam_noise = rospy.get_param("~cam_noise", True)
+        if rospy.get_param("~calib_error"):
+            self.camera.calib_error = Transform(
+                Rotation.from_euler("xyz", [0.27, 0.034, 0.18], degrees=True),
+                np.r_[0.002, 0.0018, 0.0007],
+            )
         self.cv_bridge = cv_bridge.CvBridge()
         self.init_publishers()
 
@@ -199,7 +205,9 @@ class CameraPlugin(Plugin):
         self.info_pub.publish(msg)
 
         _, depth, _ = self.camera.get_image()
-        depth = apply_noise(depth)
+
+        if self.cam_noise:
+            depth = apply_noise(depth)
 
         msg = self.cv_bridge.cv2_to_imgmsg(depth)
         msg.header.stamp = stamp

@@ -1,5 +1,7 @@
 bt_sim:
-  gui: True
+  gui: False
+  cam_noise: True
+  calib_error: True
 
 active_grasp:
   base_frame_id: panda_link0
