@@ -35,6 +35,9 @@ class Visualizer:
         self.quality_pub.publish(msg)
         rospy.sleep(0.1)
 
+    def clear_views(self):
+        self.draw([Marker(action=Marker.DELETE, ns="views")])
+
     def draw(self, markers):
         self.marker_pub.publish(MarkerArray(markers=markers))
 
@@ -45,14 +48,14 @@ class Visualizer:
         marker = create_cube_marker(frame, pose, scale, color, ns="bbox")
         self.draw([marker])
 
-    def grasps(self, frame, grasps, scores):
+    def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.8):
         if len(grasps) == 0:
             return
 
-        smin, smax = min(scores), max(scores)
         markers = []
         for i, (grasp, score) in enumerate(zip(grasps, scores)):
             color = cmap((score - smin) / (smax - smin))
+            color = [color[0], color[1], color[2], alpha]
             markers += create_grasp_markers(frame, grasp, color, "grasps", 4 * i)
         self.draw(markers)
 
@@ -117,13 +120,14 @@ class Visualizer:
         msg = to_cloud_msg(frame, np.asarray(cloud.points))
         self.scene_cloud_pub.publish(msg)
 
-    def views(self, frame, intrinsic, views, values):
+    def views(self, frame, intrinsic, views, values, alpha=0.8):
         vmin, vmax = min(values), max(values)
         scale = [0.002, 0.0, 0.0]
         near, far = 0.0, 0.02
         markers = []
         for i, (view, value) in enumerate(zip(views, values)):
             color = cmap((value - vmin) / (vmax - vmin))
+            color = [color[0], color[1], color[2], alpha]
             marker = create_cam_view_marker(
                 frame,
                 view,

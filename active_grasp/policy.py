@@ -116,6 +116,8 @@ class MultiViewPolicy(Policy):
 
         if len(grasps) > 0:
             self.best_grasp = grasps[0]
+        else:
+            self.best_grasp = None
 
         self.vis.grasps(self.base_frame, grasps, scores)
 
