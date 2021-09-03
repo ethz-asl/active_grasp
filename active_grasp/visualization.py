@@ -28,15 +28,19 @@ class Visualizer:
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
 
     def clear(self):
-        self.draw([Marker(action=Marker.DELETEALL)])
+        self.clear_markers()
         msg = to_cloud_msg("panda_link0", np.array([]))
         self.scene_cloud_pub.publish(msg)
         self.map_cloud_pub.publish(msg)
         self.quality_pub.publish(msg)
         rospy.sleep(0.1)
 
-    def clear_views(self):
-        self.draw([Marker(action=Marker.DELETE, ns="views")])
+    def clear_markers(self):
+        self.draw([Marker(action=Marker.DELETEALL)])
+
+    def clear_views(self, n):
+        markers = [Marker(action=Marker.DELETE, ns="views", id=i) for i in range(n)]
+        self.draw(markers)
 
     def draw(self, markers):
         self.marker_pub.publish(MarkerArray(markers=markers))
@@ -48,7 +52,12 @@ class Visualizer:
         marker = create_cube_marker(frame, pose, scale, color, ns="bbox")
         self.draw([marker])
 
-    def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.8):
+    def best_grasp(self, frame, grasp, score, smin=0.9, smax=1.0, alpha=1.0):
+        color = cmap((score - smin) / (smax - smin))
+        color = [color[0], color[1], color[2], alpha]
+        self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.01))
+
+    def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.6):
         if len(grasps) == 0:
             return
 
@@ -188,7 +197,7 @@ def create_grasp_markers(
     grasp,
     color,
     ns,
-    id,
+    id=0,
     finger_depth=0.05,
     radius=0.005,
 ):

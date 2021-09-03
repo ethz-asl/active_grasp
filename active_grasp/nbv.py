@@ -24,7 +24,7 @@ class NextBestView(MultiViewPolicy):
         nbv, ig = views[i], gains[i]
 
         if self.check_stopping_criteria(ig):
-            self.vis.clear_views()
+            self.vis.clear_views(len(views))
             self.done = True
         else:
             return nbv.inv()  # the controller expects T_cam_base

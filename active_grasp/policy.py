@@ -88,7 +88,7 @@ class SingleViewPolicy(Policy):
             out = self.vgn.predict(tsdf_grid)
             self.vis.quality(self.task_frame, voxel_size, out.qual)
 
-            grasps = select_grid(voxel_size, out, threshold=0.95)
+            grasps = select_grid(voxel_size, out, threshold=0.90)
             grasps, scores = self.sort_grasps(grasps)
 
             self.vis.grasps(self.base_frame, grasps, scores)
@@ -111,13 +111,12 @@ class MultiViewPolicy(Policy):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         out = self.vgn.predict(tsdf_grid)
 
-        grasps = select_grid(voxel_size, out, threshold=0.95)
+        grasps = select_grid(voxel_size, out, threshold=0.90)
         grasps, scores = self.sort_grasps(grasps)
 
         if len(grasps) > 0:
             self.best_grasp = grasps[0]
-        else:
-            self.best_grasp = None
+            self.vis.best_grasp(self.base_frame, grasps[0], scores[0])
 
         self.vis.grasps(self.base_frame, grasps, scores)
 
