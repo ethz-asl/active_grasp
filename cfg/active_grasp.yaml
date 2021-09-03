@@ -3,14 +3,17 @@ bt_sim:
   cam_noise: True
   calib_error: True
 
-active_grasp:
+grasp_controller:
   base_frame_id: panda_link0
   ee_frame_id: panda_hand
   ee_grasp_offset: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.065]
+  linear_vel: 0.1
+  qual_threshold: 0.9
   camera:
     frame_id: camera_optical_frame
     info_topic: /camera/depth/camera_info
     depth_topic: /camera/depth/image_raw
+    min_z_dist: 0.22
     
 vgn:
   model: $(find vgn)/assets/models/vgn_conv.pth

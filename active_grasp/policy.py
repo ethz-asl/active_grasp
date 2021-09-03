@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.core.fromnumeric import sort
 from sensor_msgs.msg import CameraInfo
 from pathlib import Path
 import rospy
@@ -19,9 +18,13 @@ class Policy:
         self.init_visualizer()
 
     def load_parameters(self):
-        self.base_frame = rospy.get_param("active_grasp/base_frame_id")
+        self.base_frame = rospy.get_param("~base_frame_id")
+        info_topic = rospy.get_param("~camera/info_topic")
+        self.linear_vel = rospy.get_param("~linear_vel")
+        self.min_z_dist = rospy.get_param("~camera/min_z_dist")
+        self.qual_threshold = rospy.get_param("~qual_threshold")
         self.task_frame = "task"
-        info_topic = rospy.get_param("active_grasp/camera/info_topic")
+
         msg = rospy.wait_for_message(info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
 
@@ -30,15 +33,11 @@ class Policy:
 
     def activate(self, bbox):
         self.bbox = bbox
-
         self.calibrate_task_frame()
-
         self.vis.clear()
         self.vis.bbox(self.base_frame, bbox)
-
         self.tsdf = UniformTSDFVolume(0.3, 40)
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
-
         self.views = []
         self.best_grasp = None
         self.done = False
@@ -49,6 +48,15 @@ class Policy:
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
         rospy.sleep(0.1)
+
+    def compute_error(self, x_d, x):
+        linear = x_d.translation - x.translation
+        angular = (x_d.rotation * x.rotation.inv()).as_rotvec()
+        return linear, angular
+
+    def compute_velocity_cmd(self, linear, angular):
+        linear = linear / np.linalg.norm(linear) * self.linear_vel
+        return np.r_[linear, angular]
 
     def sort_grasps(self, in_grasps):
         # Transforms grasps into base frame, checks whether they lie on the target, and sorts by their score
@@ -68,20 +76,19 @@ class Policy:
 
     def score_fn(self, grasp):
         return grasp.quality
-        # return grasp.pose.translation[2]
 
-    def update(sekf, img, extrinsic):
+    def update(self, img, pose):
         raise NotImplementedError
 
 
 class SingleViewPolicy(Policy):
-    def update(self, img, extrinsic):
-        error = extrinsic.translation - self.target.translation
+    def update(self, img, x):
+        linear, angular = self.compute_error(self.x_d, x)
 
-        if np.linalg.norm(error) < 0.01:
-            self.views.append(extrinsic.inv())
+        if np.linalg.norm(linear) < 0.01:
+            self.views.append(x)
 
-            self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
+            self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
             tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
             self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
             self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
@@ -89,7 +96,7 @@ class SingleViewPolicy(Policy):
             out = self.vgn.predict(tsdf_grid)
             self.vis.quality(self.task_frame, voxel_size, out.qual)
 
-            grasps = select_grid(voxel_size, out, threshold=0.90)
+            grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
             grasps, scores = self.sort_grasps(grasps)
 
             self.vis.grasps(self.base_frame, grasps, scores)
@@ -97,13 +104,13 @@ class SingleViewPolicy(Policy):
             self.best_grasp = grasps[0] if len(grasps) > 0 else None
             self.done = True
         else:
-            return self.target
+            return self.compute_velocity_cmd(linear, angular)
 
 
 class MultiViewPolicy(Policy):
-    def integrate(self, img, extrinsic):
-        self.views.append(extrinsic.inv())
-        self.tsdf.integrate(img, self.intrinsic, extrinsic * self.T_base_task)
+    def integrate(self, img, x):
+        self.views.append(x)
+        self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
 
         self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
         self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
@@ -112,7 +119,7 @@ class MultiViewPolicy(Policy):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         out = self.vgn.predict(tsdf_grid)
 
-        grasps = select_grid(voxel_size, out, threshold=0.90)
+        grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
         grasps, scores = self.sort_grasps(grasps)
 
         if len(grasps) > 0:

@@ -3,7 +3,7 @@
 from actionlib import SimpleActionServer
 import cv_bridge
 from franka_gripper.msg import *
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Twist
 import numpy as np
 import rospy
 from sensor_msgs.msg import JointState, Image, CameraInfo
@@ -27,7 +27,7 @@ class BtSimNode:
         self.plugins = [
             PhysicsPlugin(self.sim),
             JointStatePlugin(self.sim.arm, self.sim.gripper),
-            ArmControllerPlugin(self.sim.arm, self.sim.controller),
+            CartesianVelocityControllerPlugin(self.sim.arm, self.sim.model),
             MoveActionPlugin(self.sim.gripper),
             GraspActionPlugin(self.sim.gripper),
             CameraPlugin(self.sim.camera),
@@ -46,6 +46,7 @@ class BtSimNode:
             plugin.is_running = False
         rospy.sleep(1.0)  # TODO replace with a read-write lock
         bbox = self.sim.reset()
+        self.plugins[2].dx_d = np.zeros(6)
         res = ResetResponse(to_bbox_msg(bbox))
         for plugin in self.plugins:
             plugin.is_running = True
@@ -109,21 +110,31 @@ class JointStatePlugin(Plugin):
         self.pub.publish(msg)
 
 
-class ArmControllerPlugin(Plugin):
-    def __init__(self, arm, controller, rate=30):
+class CartesianVelocityControllerPlugin(Plugin):
+    def __init__(self, arm, model, rate=30):
         super().__init__(rate)
         self.arm = arm
-        self.controller = controller
-        rospy.Subscriber("command", PoseStamped, self.target_cb)
+        self.model = model
+        self.max_linear_vel = 0.1
+        self.max_angular_vel = 1.57
+        self.dx_d = np.zeros(6)
+        rospy.Subscriber("command", Twist, self.target_cb)
 
     def target_cb(self, msg):
-        assert msg.header.frame_id == self.arm.base_frame
-        self.controller.x_d = from_pose_msg(msg.pose)
+        self.dx_d = from_twist_msg(msg)
 
     def update(self):
         q, _ = self.arm.get_state()
-        cmd = self.controller.update(q)
+        dx = self.limit_rate(self.dx_d)
+        J_pinv = np.linalg.pinv(self.model.jacobian(q))
+        cmd = np.dot(J_pinv, dx)
         self.arm.set_desired_joint_velocities(cmd)
+
+    def limit_rate(self, dx):
+        linear, angular = dx[:3], dx[3:]
+        linear = np.clip(linear, -self.max_linear_vel, self.max_linear_vel)
+        angular = np.clip(angular, -self.max_angular_vel, self.max_angular_vel)
+        return np.r_[linear, angular]
 
 
 class MoveActionPlugin(Plugin):

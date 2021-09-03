@@ -16,7 +16,6 @@ class Simulation:
         self.find_urdfs()
         self.load_table()
         self.load_robot()
-        self.load_controller()
         self.object_uids = []
 
     def configure_physics_engine(self, gui, rate, sub_step_count):
@@ -52,11 +51,6 @@ class Simulation:
         self.model = Model(self.panda_urdf, self.arm.base_frame, self.arm.ee_frame)
         self.camera = BtCamera(320, 240, 1.047, 0.1, 1.0, self.arm.uid, 11)
 
-    def load_controller(self):
-        q, _ = self.arm.get_state()
-        x0 = self.model.pose(self.arm.ee_frame, q)
-        self.controller = CartesianPoseController(self.model, self.arm.ee_frame, x0)
-
     def seed(self, seed):
         self.rng = np.random.default_rng(seed)
 
@@ -84,8 +78,6 @@ class Simulation:
             p.resetJointState(self.arm.uid, i, q_i, 0)
         p.resetJointState(self.arm.uid, 9, 0.04, 0)
         p.resetJointState(self.arm.uid, 10, 0.04, 0)
-        x0 = self.model.pose(self.arm.ee_frame, q)
-        self.controller.x_d = x0
 
     def load_object(self, urdf, ori, pos, scale=1.0):
         uid = p.loadURDF(str(urdf), pos, ori.as_quat(), globalScaling=scale)
@@ -139,31 +131,3 @@ class Simulation:
         aabb_min = np.array(aabb_min) - self.T_world_base.translation
         aabb_max = np.array(aabb_max) - self.T_world_base.translation
         return AABBox(aabb_min, aabb_max)
-
-
-class CartesianPoseController:
-    def __init__(self, model, frame, x0):
-        self.model = model
-        self.frame = frame
-
-        self.kp = np.ones(6) * 4.0
-        self.max_linear_vel = 0.05
-        self.max_angular_vel = 1.57
-
-        self.x_d = x0
-
-    def update(self, q):
-        x = self.model.pose(self.frame, q)
-        error = np.zeros(6)
-        error[:3] = self.x_d.translation - x.translation
-        error[3:] = (self.x_d.rotation * x.rotation.inv()).as_rotvec()
-        dx = self.limit_rate(self.kp * error)
-        J_pinv = np.linalg.pinv(self.model.jacobian(self.frame, q))
-        cmd = np.dot(J_pinv, dx)
-        return cmd
-
-    def limit_rate(self, dx):
-        linear, angular = dx[:3], dx[3:]
-        linear = np.clip(linear, -self.max_linear_vel, self.max_linear_vel)
-        angular = np.clip(angular, -self.max_angular_vel, self.max_angular_vel)
-        return np.r_[linear, angular]

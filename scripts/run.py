@@ -11,7 +11,7 @@ from active_grasp.srv import Seed
 
 
 def main():
-    rospy.init_node("active_grasp")
+    rospy.init_node("grasp_controller")
 
     parser = create_parser()
     args = parser.parse_args()

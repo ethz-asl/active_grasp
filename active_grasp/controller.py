@@ -1,6 +1,6 @@
 import copy
 import cv_bridge
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Twist
 import numpy as np
 import rospy
 from sensor_msgs.msg import Image
@@ -35,12 +35,8 @@ class GraspController:
         self.T_ee_cam = tf.lookup(self.ee_frame, self.cam_frame)
 
     def init_robot_connection(self):
-        self.target_pose_pub = rospy.Publisher("command", PoseStamped, queue_size=10)
+        self.cartesian_vel_pub = rospy.Publisher("command", Twist, queue_size=10)
         self.gripper = PandaGripperClient()
-
-    def send_cmd(self, pose):
-        msg = to_pose_stamped_msg(pose, self.base_frame)
-        self.target_pose_pub.publish(msg)
 
     def init_camera_stream(self):
         self.cv_bridge = cv_bridge.CvBridge()
@@ -65,21 +61,23 @@ class GraspController:
         self.policy.activate(bbox)
         r = rospy.Rate(self.policy.rate)
         while True:
-            img, extrinsic = self.get_state()
-            next_extrinsic = self.policy.update(img, extrinsic)
+            img, pose = self.get_state()
+            cmd = self.policy.update(img, pose)
             if self.policy.done:
                 break
-            self.send_cmd((self.T_ee_cam * next_extrinsic).inv())
-            r.sleep()
+            else:
+                self.cartesian_vel_pub.publish(to_twist_msg(cmd))
+                r.sleep()
         return self.policy.best_grasp
 
     def get_state(self):
         msg = copy.deepcopy(self.latest_depth_msg)
         img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
-        extrinsic = tf.lookup(self.cam_frame, self.base_frame, msg.header.stamp)
-        return img, extrinsic
+        pose = tf.lookup(self.base_frame, self.cam_frame, msg.header.stamp)
+        return img, pose
 
     def execute_grasp(self, grasp):
+        return
         if not grasp:
             return "aborted"
 
