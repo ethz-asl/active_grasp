@@ -147,7 +147,7 @@ class CartesianPoseController:
         self.frame = frame
 
         self.kp = np.ones(6) * 4.0
-        self.max_linear_vel = 0.1
+        self.max_linear_vel = 0.05
         self.max_angular_vel = 1.57
 
         self.x_d = x0

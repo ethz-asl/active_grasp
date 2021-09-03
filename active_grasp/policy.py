@@ -51,6 +51,7 @@ class Policy:
         rospy.sleep(0.1)
 
     def sort_grasps(self, in_grasps):
+        # Transforms grasps into base frame, checks whether they lie on the target, and sorts by their score
         grasps, scores = [], []
 
         for grasp in in_grasps:

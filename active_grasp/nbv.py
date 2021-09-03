@@ -1,5 +1,7 @@
 import itertools
 import numpy as np
+from numpy.lib.twodim_base import eye
+from scipy.ndimage.measurements import center_of_mass
 
 from .policy import MultiViewPolicy
 from vgn.utils import look_at, spherical_to_cartesian
@@ -12,22 +14,39 @@ class NextBestView(MultiViewPolicy):
         self.min_ig = 10.0
 
     def update(self, img, extrinsic):
-        self.integrate(img, extrinsic)
-        views = self.generate_views()
-        gains = self.compute_expected_information_gains(views)
-        costs = self.compute_movement_costs(views)
-        utilities = gains / np.sum(gains) - costs / np.sum(costs)
-
-        self.vis.views(self.base_frame, self.intrinsic, views, utilities)
-
-        i = np.argmax(utilities)
-        nbv, ig = views[i], gains[i]
-
-        if self.check_stopping_criteria(ig):
-            self.vis.clear_views(len(views))
+        if len(self.views) > self.max_views:
             self.done = True
+            return
+
+        T_base_cam = extrinsic.inv()
+
+        self.integrate(img, extrinsic)
+
+        if self.best_grasp:
+            R, t = self.best_grasp.pose.rotation, self.best_grasp.pose.translation
+            d = np.linalg.norm(T_base_cam.translation - t)
+            if d < 0.21:
+                self.done = True
+                return
+            center = t
+            eye = R.apply([0.0, 0.0, -0.2]) + t
+            up = np.r_[1.0, 0.0, 0.0]
+            cmd = look_at(eye, center, up)
         else:
-            return nbv.inv()  # the controller expects T_cam_base
+            # Explore occluded parts of the object.
+            views = self.generate_views()
+            gains = self.compute_expected_information_gains(views)
+            costs = self.compute_movement_costs(views)
+            utilities = gains / np.sum(gains) - costs / np.sum(costs)
+            self.vis.views(self.base_frame, self.intrinsic, views, utilities)
+            i = np.argmax(utilities)
+            nbv, ig = views[i], gains[i]
+            if ig < self.min_ig:
+                self.done = True
+                return
+            cmd = nbv.inv()
+
+        return cmd
 
     def generate_views(self):
         r, h = 0.14, 0.2
@@ -46,14 +65,6 @@ class NextBestView(MultiViewPolicy):
 
     def compute_movement_costs(self, views):
         return [self.cost_fn(v) for v in views]
-
-    def check_stopping_criteria(self, ig):
-        if len(self.views) > self.max_views:
-            return True
-        if ig < self.min_ig:
-            return True
-        # TODO check whether a "good enough" grasp has been found
-        return False
 
     def ig_fn(self, view, downsample=20):
         fx = self.intrinsic.fx / downsample

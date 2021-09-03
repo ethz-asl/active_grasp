@@ -30,7 +30,7 @@ def main():
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("policy", type=str, choices=registry.keys())
-    parser.add_argument("--runs", type=int, default=10)
+    parser.add_argument("--runs", type=int, default=100)
     parser.add_argument("--logdir", type=Path, default="logs")
     parser.add_argument("--rate", type=int, default=5)
     parser.add_argument("--seed", type=int, default=12)
