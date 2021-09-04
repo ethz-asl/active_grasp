@@ -9,7 +9,8 @@ from vgn.utils import look_at
 class InitialView(SingleViewPolicy):
     def update(self, img, pose):
         self.x_d = pose
-        super().update(img, pose)
+        cmd = super().update(img, pose)
+        return cmd
 
 
 class TopView(SingleViewPolicy):
@@ -40,9 +41,9 @@ class TopTrajectory(MultiViewPolicy):
 class CircularTrajectory(MultiViewPolicy):
     def __init__(self, rate):
         super().__init__(rate)
-        self.r = 0.1
+        self.r = 0.12
         self.h = self.min_z_dist
-        self.duration = 2.0 * np.pi * self.r / self.linear_vel + 2.0
+        self.duration = 2.0 * np.pi * self.r / self.linear_vel
         self.m = scipy.interpolate.interp1d([0.0, self.duration], [np.pi, 3.0 * np.pi])
 
     def activate(self, bbox):
