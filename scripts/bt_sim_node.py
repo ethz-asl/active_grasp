@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from actionlib import SimpleActionServer
+import control_msgs.msg
+from controller_manager_msgs.srv import *
 import cv_bridge
 from franka_gripper.msg import *
 from geometry_msgs.msg import Twist
@@ -27,34 +29,22 @@ class BtSimNode:
         self.plugins = [
             PhysicsPlugin(self.sim),
             JointStatePlugin(self.sim.arm, self.sim.gripper),
-            CartesianVelocityControllerPlugin(self.sim.arm, self.sim.model),
             MoveActionPlugin(self.sim.gripper),
             GraspActionPlugin(self.sim.gripper),
+            GripperActionPlugin(),
             CameraPlugin(self.sim.camera),
         ]
-
-    def advertise_services(self):
-        rospy.Service("seed", Seed, self.seed)
-        rospy.Service("reset", Reset, self.reset)
-
-    def seed(self, req):
-        self.sim.seed(req.seed)
-        return SeedResponse()
-
-    def reset(self, req):
-        self.deactivate_plugins()
-        rospy.sleep(1.0)  # TODO replace with a read-write lock
-        bbox = self.sim.reset()
-        self.activate_plugins()
-        return ResetResponse(to_bbox_msg(bbox))
-
-    def run(self):
-        self.start_plugins()
-        self.activate_plugins()
-        rospy.spin()
+        self.controllers = {
+            "cartesian_velocity_controller": CartesianVelocityControllerPlugin(
+                self.sim.arm, self.sim.model
+            ),
+            "position_joint_trajectory_controller": JointTrajectoryControllerPlugin(
+                self.sim.arm
+            ),
+        }
 
     def start_plugins(self):
-        for plugin in self.plugins:
+        for plugin in self.plugins + list(self.controllers.values()):
             plugin.thread.start()
 
     def activate_plugins(self):
@@ -64,6 +54,43 @@ class BtSimNode:
     def deactivate_plugins(self):
         for plugin in self.plugins:
             plugin.deactivate()
+
+    def deactivate_controllers(self):
+        for controller in self.controllers.values():
+            controller.deactivate()
+
+    def advertise_services(self):
+        rospy.Service("seed", Seed, self.seed)
+        rospy.Service("reset", Reset, self.reset)
+        rospy.Service(
+            "/controller_manager/switch_controller",
+            SwitchController,
+            self.switch_controller,
+        )
+
+    def seed(self, req):
+        self.sim.seed(req.seed)
+        return SeedResponse()
+
+    def reset(self, req):
+        self.deactivate_plugins()
+        self.deactivate_controllers()
+        rospy.sleep(1.0)  # TODO replace with a read-write lock
+        bbox = self.sim.reset()
+        self.activate_plugins()
+        return ResetResponse(to_bbox_msg(bbox))
+
+    def switch_controller(self, req):
+        for controller in req.stop_controllers:
+            self.controllers[controller].deactivate()
+        for controller in req.start_controllers:
+            self.controllers[controller].activate()
+        return SwitchControllerResponse(ok=True)
+
+    def run(self):
+        self.start_plugins()
+        self.activate_plugins()
+        rospy.spin()
 
 
 class Plugin:
@@ -134,11 +161,51 @@ class CartesianVelocityControllerPlugin(Plugin):
         self.dx_d = np.zeros(6)
         self.is_running = True
 
+    def deactivate(self):
+        self.dx_d = np.zeros(6)
+        self.is_running = False
+        self.arm.set_desired_joint_velocities(np.zeros(7))
+
     def update(self):
         q, _ = self.arm.get_state()
         J_pinv = np.linalg.pinv(self.model.jacobian(q))
         cmd = np.dot(J_pinv, self.dx_d)
         self.arm.set_desired_joint_velocities(cmd)
+
+
+class JointTrajectoryControllerPlugin(Plugin):
+    def __init__(self, arm, rate=30):
+        super().__init__(rate)
+        self.arm = arm
+        self.dt = 1.0 / self.rate
+        self.init_action_server()
+
+    def init_action_server(self):
+        name = "position_joint_trajectory_controller/follow_joint_trajectory"
+        self.action_server = SimpleActionServer(
+            name,
+            control_msgs.msg.FollowJointTrajectoryAction,
+            auto_start=False,
+        )
+        self.action_server.register_goal_callback(self.action_goal_cb)
+        self.action_server.start()
+
+    def action_goal_cb(self):
+        goal = self.action_server.accept_new_goal()
+        self.elapsed_time = 0.0
+        self.points = iter(goal.trajectory.points)
+        self.next_point = next(self.points)
+
+    def update(self):
+        if self.action_server.is_active():
+            self.elapsed_time += self.dt
+            if self.elapsed_time > self.next_point.time_from_start.to_sec():
+                try:
+                    self.next_point = next(self.points)
+                except StopIteration:
+                    self.action_server.set_succeeded()
+                    return
+            self.arm.set_desired_joint_positions(self.next_point.positions)
 
 
 class MoveActionPlugin(Plugin):
@@ -189,6 +256,29 @@ class GraspActionPlugin(Plugin):
             self.elapsed_time += self.dt
             if self.elapsed_time > 1.0:
                 self.action_server.set_succeeded()
+
+
+class GripperActionPlugin(Plugin):
+    """Empty action server to make MoveIt happy"""
+
+    def __init__(self, rate=1):
+        super().__init__(rate)
+        self.init_action_server()
+
+    def init_action_server(self):
+        name = "/franka_gripper/gripper_action"
+        self.action_server = SimpleActionServer(
+            name, control_msgs.msg.GripperCommandAction, auto_start=False
+        )
+        self.action_server.register_goal_callback(self.action_goal_cb)
+        self.action_server.start()
+
+    def action_goal_cb(self):
+        self.action_server.accept_new_goal()
+
+    def update(self):
+        if self.action_server.is_active():
+            self.action_server.set_succeeded()
 
 
 class CameraPlugin(Plugin):

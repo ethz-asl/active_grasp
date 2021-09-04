@@ -2,12 +2,18 @@
 <launch>
   <arg name="launch_rviz" default="false" />
 
+  <!-- Load parameters -->
   <rosparam command="load" file="$(find active_grasp)/cfg/active_grasp.yaml" subst_value="true" />
 
+  <!-- Launch simulated robot -->
   <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/urdfs/franka/panda_arm_hand.urdf.xacro" />
-
   <node pkg="active_grasp" type="bt_sim_node.py" name="bt_sim" output="screen" />
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
+  <!-- Launch MoveIt -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="virtual_joint_broadcaster" args="0 0 0 0 0 0 world panda_link0" />
+  <include file="$(find panda_moveit_config)/launch/move_group.launch" />
+
+  <!-- Launch rviz -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/active_grasp.rviz" if="$(arg launch_rviz)" />
 </launch>

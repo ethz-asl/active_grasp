@@ -55,7 +55,10 @@ class Policy:
         return linear, angular
 
     def compute_velocity_cmd(self, linear, angular):
-        linear = linear / np.linalg.norm(linear) * self.linear_vel
+        kp = 4.0
+        linear = kp * linear
+        scale = np.linalg.norm(linear)
+        linear *= np.clip(scale, 0.0, self.linear_vel) / scale
         return np.r_[linear, angular]
 
     def sort_grasps(self, in_grasps):
@@ -85,7 +88,7 @@ class SingleViewPolicy(Policy):
     def update(self, img, x):
         linear, angular = self.compute_error(self.x_d, x)
 
-        if np.linalg.norm(linear) < 0.01:
+        if np.linalg.norm(linear) < 0.02:
             self.views.append(x)
 
             self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
@@ -103,6 +106,7 @@ class SingleViewPolicy(Policy):
 
             self.best_grasp = grasps[0] if len(grasps) > 0 else None
             self.done = True
+            return np.zeros(6)
         else:
             return self.compute_velocity_cmd(linear, angular)
 

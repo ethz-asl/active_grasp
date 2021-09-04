@@ -6,8 +6,8 @@ bt_sim:
 grasp_controller:
   base_frame_id: panda_link0
   ee_frame_id: panda_hand
-  ee_grasp_offset: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.065]
-  linear_vel: 0.1
+  ee_grasp_offset: [0.0, 0.0, -0.383, 0.924, 0.0, 0.0, 0.065]  # offset to the moveit ee
+  linear_vel: 0.05
   qual_threshold: 0.9
   camera:
     frame_id: camera_optical_frame
