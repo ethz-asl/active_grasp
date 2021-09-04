@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from actionlib import SimpleActionServer
-import control_msgs.msg
+import control_msgs.msg as control_msgs
 from controller_manager_msgs.srv import *
 import cv_bridge
 from franka_gripper.msg import *
@@ -10,6 +10,7 @@ import numpy as np
 import rospy
 from sensor_msgs.msg import JointState, Image, CameraInfo
 import skimage.transform
+from scipy import interpolate
 from threading import Thread
 
 from active_grasp.bbox import to_bbox_msg
@@ -177,35 +178,37 @@ class JointTrajectoryControllerPlugin(Plugin):
     def __init__(self, arm, rate=30):
         super().__init__(rate)
         self.arm = arm
-        self.dt = 1.0 / self.rate
+        self.dt = 1.0 / self.rate  # TODO this might not be reliable
         self.init_action_server()
 
     def init_action_server(self):
         name = "position_joint_trajectory_controller/follow_joint_trajectory"
         self.action_server = SimpleActionServer(
-            name,
-            control_msgs.msg.FollowJointTrajectoryAction,
-            auto_start=False,
+            name, control_msgs.FollowJointTrajectoryAction, auto_start=False
         )
         self.action_server.register_goal_callback(self.action_goal_cb)
         self.action_server.start()
 
     def action_goal_cb(self):
         goal = self.action_server.accept_new_goal()
+        self.interpolate_trajectory(goal.trajectory.points)
         self.elapsed_time = 0.0
-        self.points = iter(goal.trajectory.points)
-        self.next_point = next(self.points)
+
+    def interpolate_trajectory(self, points):
+        t, y = np.zeros(len(points)), np.zeros((7, len(points)))
+        for i, point in enumerate(points):
+            t[i] = point.time_from_start.to_sec()
+            y[:, i] = point.positions
+        self.m = interpolate.interp1d(t, y)
+        self.duration = t[-1]
 
     def update(self):
         if self.action_server.is_active():
             self.elapsed_time += self.dt
-            if self.elapsed_time > self.next_point.time_from_start.to_sec():
-                try:
-                    self.next_point = next(self.points)
-                except StopIteration:
-                    self.action_server.set_succeeded()
-                    return
-            self.arm.set_desired_joint_positions(self.next_point.positions)
+            if self.elapsed_time > self.duration:
+                self.action_server.set_succeeded()
+                return
+            self.arm.set_desired_joint_positions(self.m(self.elapsed_time))
 
 
 class MoveActionPlugin(Plugin):
@@ -268,7 +271,7 @@ class GripperActionPlugin(Plugin):
     def init_action_server(self):
         name = "/franka_gripper/gripper_action"
         self.action_server = SimpleActionServer(
-            name, control_msgs.msg.GripperCommandAction, auto_start=False
+            name, control_msgs.GripperCommandAction, auto_start=False
         )
         self.action_server.register_goal_callback(self.action_goal_cb)
         self.action_server.start()

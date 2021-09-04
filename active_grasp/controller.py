@@ -111,7 +111,7 @@ class GraspController:
         self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
         self.moveit.goto(T_base_grasp * self.T_grasp_ee)
         self.gripper.grasp()
-        self.moveit.goto(Transform.t([0, 0, 0.2]) * T_base_grasp * self.T_grasp_ee)
+        self.moveit.goto(Transform.t([0, 0, 0.1]) * T_base_grasp * self.T_grasp_ee)
 
         success = self.gripper.read() > 0.005
 
