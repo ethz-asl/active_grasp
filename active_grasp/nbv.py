@@ -12,41 +12,43 @@ class NextBestView(MultiViewPolicy):
         super().__init__(rate)
         self.max_views = 20
         self.min_ig = 10.0
+        self.cost_factor = 10.0
 
-    def update(self, img, extrinsic):
+    def update(self, img, x):
         if len(self.views) > self.max_views:
             self.done = True
-            return
-
-        T_base_cam = extrinsic.inv()
-
-        self.integrate(img, extrinsic)
-
-        if self.best_grasp:
-            R, t = self.best_grasp.pose.rotation, self.best_grasp.pose.translation
-            d = np.linalg.norm(T_base_cam.translation - t)
-            if d < 0.21:
-                self.done = True
-                return
-            center = t
-            eye = R.apply([0.0, 0.0, -0.2]) + t
-            up = np.r_[1.0, 0.0, 0.0]
-            cmd = look_at(eye, center, up)
+            return np.zeros(6)
         else:
-            # Explore occluded parts of the object.
+            self.integrate(img, x)
+
             views = self.generate_views()
             gains = self.compute_expected_information_gains(views)
             costs = self.compute_movement_costs(views)
             utilities = gains / np.sum(gains) - costs / np.sum(costs)
+
             self.vis.views(self.base_frame, self.intrinsic, views, utilities)
             i = np.argmax(utilities)
             nbv, ig = views[i], gains[i]
+
             if ig < self.min_ig:
                 self.done = True
-                return
-            cmd = nbv.inv()
+                return np.zeros(6)
 
-        return cmd
+            cmd = self.compute_velocity_cmd(*self.compute_error(nbv, x))
+
+            if self.best_grasp:
+                R, t = self.best_grasp.pose.rotation, self.best_grasp.pose.translation
+                if np.linalg.norm(t - x.translation) < self.min_z_dist:
+                    self.done = True
+                    return np.zeros(6)
+
+                center = t
+                eye = R.apply([0.0, 0.0, -0.2]) + t
+                up = np.r_[1.0, 0.0, 0.0]
+                x_d = look_at(eye, center, up)
+                cmd = self.compute_velocity_cmd(*self.compute_error(x_d, x))
+
+            return cmd
 
     def generate_views(self):
         r, h = 0.14, 0.2
@@ -57,7 +59,7 @@ class NextBestView(MultiViewPolicy):
             eye = self.center + np.r_[0, 0, h] + spherical_to_cartesian(r, theta, phi)
             target = self.center
             up = np.r_[1.0, 0.0, 0.0]
-            views.append(look_at(eye, target, up).inv())
+            views.append(look_at(eye, target, up))
         return views
 
     def compute_expected_information_gains(self, views):
