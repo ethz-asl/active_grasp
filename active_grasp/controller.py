@@ -121,6 +121,7 @@ class GraspController:
         rot = T_base_grasp.rotation
         if rot.as_matrix()[:, 0][0] < 0:  # Ensure that the camera is pointing forward
             T_base_grasp.rotation = rot * Rotation.from_euler("z", np.pi)
+        T_base_grasp *= Transform.t([0.0, 0.0, 0.01])
         return T_base_grasp
 
     def collect_info(self, result):

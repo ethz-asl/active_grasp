@@ -16,7 +16,7 @@ class InitialView(SingleViewPolicy):
 class TopView(SingleViewPolicy):
     def activate(self, bbox):
         super().activate(bbox)
-        eye = np.r_[self.center[:2], self.center[2] + self.min_z_dist]
+        eye = np.r_[self.center[:2], self.center[2] + 0.3]
         up = np.r_[1.0, 0.0, 0.0]
         self.x_d = look_at(eye, self.center, up)
 
@@ -24,7 +24,7 @@ class TopView(SingleViewPolicy):
 class TopTrajectory(MultiViewPolicy):
     def activate(self, bbox):
         super().activate(bbox)
-        eye = np.r_[self.center[:2], self.center[2] + self.min_z_dist]
+        eye = np.r_[self.center[:2], self.center[2] + 0.3]
         up = np.r_[1.0, 0.0, 0.0]
         self.x_d = look_at(eye, self.center, up)
 
@@ -42,7 +42,7 @@ class CircularTrajectory(MultiViewPolicy):
     def __init__(self, rate):
         super().__init__(rate)
         self.r = 0.12
-        self.h = self.min_z_dist
+        self.h = 0.3
         self.duration = 2.0 * np.pi * self.r / self.linear_vel
         self.m = scipy.interpolate.interp1d([0.0, self.duration], [np.pi, 3.0 * np.pi])
 

@@ -1,7 +1,6 @@
 import itertools
 import numpy as np
-from numpy.lib.twodim_base import eye
-from scipy.ndimage.measurements import center_of_mass
+import rospy
 
 from .policy import MultiViewPolicy
 from vgn.utils import look_at, spherical_to_cartesian
@@ -30,9 +29,9 @@ class NextBestView(MultiViewPolicy):
             i = np.argmax(utilities)
             nbv, ig = views[i], gains[i]
 
-            if ig < self.min_ig:
-                self.done = True
-                return np.zeros(6)
+            # if ig < self.min_ig:
+            #     self.done = True
+            #     return np.zeros(6)
 
             cmd = self.compute_velocity_cmd(*self.compute_error(nbv, x))
 
@@ -51,7 +50,7 @@ class NextBestView(MultiViewPolicy):
             return cmd
 
     def generate_views(self):
-        r, h = 0.14, 0.2
+        r, h = 0.18, 0.2
         thetas = np.arange(1, 4) * np.deg2rad(30)
         phis = np.arange(1, 6) * np.deg2rad(60)
         views = []
