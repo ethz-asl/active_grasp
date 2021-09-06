@@ -33,7 +33,7 @@ def create_parser():
     parser.add_argument("--runs", type=int, default=100)
     parser.add_argument("--logdir", type=Path, default="logs")
     parser.add_argument("--rate", type=int, default=5)
-    parser.add_argument("--seed", type=int, default=12)
+    parser.add_argument("--seed", type=int, default=1)
     return parser
 
 
