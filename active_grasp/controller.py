@@ -50,9 +50,7 @@ class GraspController:
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
         rospy.sleep(1.0)  # wait for connections to be established
-
-        table_height = 0.22
-        msg = to_pose_stamped_msg(Transform.t([0.4, 0, table_height]), self.base_frame)
+        msg = to_pose_stamped_msg(Transform.t([0.4, 0, 0.4]), self.base_frame)
         self.moveit.scene.add_box("table", msg, size=(0.5, 0.5, 0.02))
 
     def switch_to_cartesian_velocity_control(self):

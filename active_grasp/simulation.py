@@ -46,21 +46,13 @@ class Simulation:
 
     def reset(self):
         self.scene.reset(rng=self.rng)
-        self.set_initial_arm_configuration()
+        q = self.scene.sample_initial_configuration(self.rng)
+        self.set_arm_configuration(q)
         uid = self.select_target()
         bbox = self.get_target_bbox(uid)
         return bbox
 
-    def set_initial_arm_configuration(self):
-        q = [
-            self.rng.uniform(-0.17, 0.17),  # 0.0
-            self.rng.uniform(-0.96, -0.62),  # -0.79,
-            self.rng.uniform(-0.17, 0.17),  # 0.0
-            self.rng.uniform(-2.36, -2.19),  # -2.36,
-            0.0,
-            self.rng.uniform(1.57, 1.91),  # 1.57
-            self.rng.uniform(0.62, 0.96),  # 0.79,
-        ]
+    def set_arm_configuration(self, q):
         for i, q_i in enumerate(q):
             p.resetJointState(self.arm.uid, i, q_i, 0)
         p.resetJointState(self.arm.uid, 9, 0.04, 0)
@@ -86,7 +78,6 @@ class Simulation:
 class Scene:
     def __init__(self):
         self.urdfs_path = Path(rospack.get_path("vgn")) / "assets/urdfs"
-        self.origin = None
         self.support_uid = -1
         self.object_uids = []
 
@@ -130,7 +121,8 @@ def find_urdfs(root):
 class RandomScene(Scene):
     def __init__(self):
         super().__init__()
-        self.center = np.r_[[0.5, 0.0, 0.2]]
+        # self.center = np.r_[0.5, 0.0, 0.2]
+        self.center = np.r_[0.6, 0.0, 0.1]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
         self.object_urdfs = find_urdfs(self.urdfs_path / "packed" / "test")
@@ -139,7 +131,7 @@ class RandomScene(Scene):
     def load(self, rng, attempts=10):
         self.load_support(self.support_urdf, Rotation.identity(), self.center, 0.3)
 
-        urdfs, scale = rng.choice(self.object_urdfs, 4), 0.8
+        urdfs, scale = rng.choice(self.object_urdfs, 5), 0.8
         for urdf in urdfs:
             uid = self.load_object(urdf, Rotation.identity(), np.zeros(3), scale)
             lower, upper = p.getAABB(uid)
@@ -158,6 +150,12 @@ class RandomScene(Scene):
             else:
                 # No placement found, remove the object
                 self.remove_object(uid)
+
+    def sample_initial_configuration(self, rng):
+        # q = [0.0, -0.79, 0.0, -2.36, 0.0, 1.57, 0.79]
+        q = [0.0, -0.96, 0.0, -2.09, 0.0, 1.66, 0.79]
+        q += rng.uniform(-0.08, 0.08, 7)
+        return q
 
 
 scenes = {
