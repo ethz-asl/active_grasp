@@ -13,5 +13,7 @@
 
     <exec_depend>message_runtime</exec_depend>
 
+    <depend>geometry_msgs</depend>
     <depend>rospy</depend>
+    <depend>std_msgs</depend>
 </package>

@@ -21,8 +21,9 @@ from robot_helpers.ros.conversions import *
 
 class BtSimNode:
     def __init__(self):
-        self.gui = rospy.get_param("~gui", True)
-        self.sim = Simulation(gui=self.gui)
+        gui = rospy.get_param("~gui")
+        scene_id = rospy.get_param("~scene")
+        self.sim = Simulation(gui=gui, scene_id=scene_id)
         self.init_plugins()
         self.advertise_services()
 

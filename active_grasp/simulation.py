@@ -6,17 +6,20 @@ import rospkg
 from active_grasp.bbox import AABBox
 from robot_helpers.bullet import *
 from robot_helpers.model import Model
-from robot_helpers.spatial import Rotation, Transform
+from robot_helpers.spatial import Rotation
+
+
+rospack = rospkg.RosPack()
 
 
 class Simulation:
-    def __init__(self, gui):
+    """Robot is placed s.t. world and base frames are the same"""
+
+    def __init__(self, gui, scene_id):
         self.configure_physics_engine(gui, 60, 4)
         self.configure_visualizer()
-        self.find_urdfs()
-        self.load_table()
         self.load_robot()
-        self.object_uids = []
+        self.scene = get_scene(scene_id)
 
     def configure_physics_engine(self, gui, rate, sub_step_count):
         self.rate = rate
@@ -28,41 +31,25 @@ class Simulation:
 
     def configure_visualizer(self):
         # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-        p.resetDebugVisualizerCamera(1.4, 50, -35, [0.0, 0.0, 0.6])
-
-    def find_urdfs(self):
-        rospack = rospkg.RosPack()
-        assets_path = Path(rospack.get_path("active_grasp")) / "assets"
-        self.panda_urdf = assets_path / "urdfs/franka/panda_arm_hand.urdf"
-        root = Path(rospack.get_path("vgn")) / "assets/urdfs/packed/test"
-        self.urdfs = [str(f) for f in root.iterdir() if f.suffix == ".urdf"]
-
-    def load_table(self):
-        p.loadURDF("plane.urdf")
-        ori = Rotation.from_rotvec(np.array([0, 0, np.pi / 2])).as_quat()
-        p.loadURDF("table/table.urdf", baseOrientation=ori, useFixedBase=True)
-        self.length = 0.3
-        self.origin = [-0.3, -0.5 * self.length, 0.5]
+        p.resetDebugVisualizerCamera(1.2, 30, -30, [0.4, 0.0, 0.2])
 
     def load_robot(self):
-        self.T_world_base = Transform.translation(np.r_[-0.6, 0.0, 0.4])
-        self.arm = BtPandaArm(self.panda_urdf, self.T_world_base)
+        path = Path(rospack.get_path("active_grasp"))
+        panda_urdf = path / "assets/urdfs/franka/panda_arm_hand.urdf"
+        self.arm = BtPandaArm(panda_urdf)
         self.gripper = BtPandaGripper(self.arm)
-        self.model = Model(self.panda_urdf, self.arm.base_frame, self.arm.ee_frame)
+        self.model = Model(panda_urdf, self.arm.base_frame, self.arm.ee_frame)
         self.camera = BtCamera(320, 240, 1.047, 0.1, 1.0, self.arm.uid, 11)
 
     def seed(self, seed):
         self.rng = np.random.default_rng(seed)
 
     def reset(self):
-        self.remove_all_objects()
+        self.scene.reset(rng=self.rng)
         self.set_initial_arm_configuration()
-        self.load_random_object_arrangement()
         uid = self.select_target()
-        return self.get_target_bbox(uid)
-
-    def step(self):
-        p.stepSimulation()
+        bbox = self.get_target_bbox(uid)
+        return bbox
 
     def set_initial_arm_configuration(self):
         q = [
@@ -79,6 +66,40 @@ class Simulation:
         p.resetJointState(self.arm.uid, 9, 0.04, 0)
         p.resetJointState(self.arm.uid, 10, 0.04, 0)
 
+    def select_target(self):
+        _, _, mask = self.camera.get_image()
+        uids, counts = np.unique(mask, return_counts=True)
+        mask = np.isin(uids, self.scene.object_uids)  # remove ids of the floor, etc
+        uids, counts = uids[mask], counts[mask]
+        target_uid = uids[np.argmin(counts)]
+        p.changeVisualShape(target_uid, -1, rgbaColor=[1, 0, 0, 1])
+        return target_uid
+
+    def get_target_bbox(self, uid):
+        aabb_min, aabb_max = p.getAABB(uid)
+        return AABBox(aabb_min, aabb_max)
+
+    def step(self):
+        p.stepSimulation()
+
+
+class Scene:
+    def __init__(self):
+        self.urdfs_path = Path(rospack.get_path("vgn")) / "assets/urdfs"
+        self.origin = None
+        self.support_uid = -1
+        self.object_uids = []
+
+    def load_support(self, urdf, ori, pos, scale):
+        uid = p.loadURDF(str(urdf), pos, ori.as_quat(), globalScaling=scale)
+        self.support_uid = uid
+        return uid
+
+    def remove_support(self):
+        if self.support_uid != -1:
+            p.removeBody(self.support_uid)
+            self.support_uid = -1
+
     def load_object(self, urdf, ori, pos, scale=1.0):
         uid = p.loadURDF(str(urdf), pos, ori.as_quat(), globalScaling=scale)
         self.object_uids.append(uid)
@@ -92,22 +113,44 @@ class Simulation:
         for uid in list(self.object_uids):
             self.remove_object(uid)
 
-    def load_random_object_arrangement(self, attempts=10):
-        origin = np.r_[self.origin[:2], 0.625]
-        scale = 0.8
-        urdfs = self.rng.choice(self.urdfs, 4)
+    def reset(self, rng):
+        self.remove_support()
+        self.remove_all_objects()
+        self.load(rng)
+
+    def load(self, rng):
+        raise NotImplementedError
+
+
+def find_urdfs(root):
+    # Scans a dir for URDF assets
+    return [str(f) for f in root.iterdir() if f.suffix == ".urdf"]
+
+
+class RandomScene(Scene):
+    def __init__(self):
+        super().__init__()
+        self.center = np.r_[[0.5, 0.0, 0.2]]
+        self.length = 0.3
+        self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
+        self.object_urdfs = find_urdfs(self.urdfs_path / "packed" / "test")
+        self.support_urdf = self.urdfs_path / "setup/plane.urdf"
+
+    def load(self, rng, attempts=10):
+        self.load_support(self.support_urdf, Rotation.identity(), self.center, 0.3)
+
+        urdfs, scale = rng.choice(self.object_urdfs, 4), 0.8
         for urdf in urdfs:
-            # Load the object
-            uid = self.load_object(urdf, Rotation.identity(), [0.0, 0.0, 0.0], scale)
+            uid = self.load_object(urdf, Rotation.identity(), np.zeros(3), scale)
             lower, upper = p.getAABB(uid)
             z_offset = 0.5 * (upper[2] - lower[2]) + 0.002
             state_id = p.saveState()
             for _ in range(attempts):
-                # Try to place the object without collision
-                ori = Rotation.from_rotvec([0.0, 0.0, self.rng.uniform(0, 2 * np.pi)])
-                offset = np.r_[self.rng.uniform(0.2, 0.8, 2) * self.length, z_offset]
-                p.resetBasePositionAndOrientation(uid, origin + offset, ori.as_quat())
-                self.step()
+                # Try to place and check for collisions
+                ori = Rotation.from_rotvec([0.0, 0.0, rng.uniform(0, 2 * np.pi)])
+                pos = np.r_[rng.uniform(0.2, 0.8, 2) * self.length, z_offset]
+                p.resetBasePositionAndOrientation(uid, self.origin + pos, ori.as_quat())
+                p.stepSimulation()
                 if not p.getContactPoints(uid):
                     break
                 else:
@@ -116,18 +159,14 @@ class Simulation:
                 # No placement found, remove the object
                 self.remove_object(uid)
 
-    def select_target(self):
-        _, _, mask = self.camera.get_image()
-        uids, counts = np.unique(mask, return_counts=True)
-        mask = np.isin(uids, self.object_uids)  # remove ids of the floor, table, etc
-        uids, counts = uids[mask], counts[mask]
-        target_uid = uids[np.argmin(counts)]
-        p.changeVisualShape(target_uid, -1, rgbaColor=[1, 0, 0, 1])
-        return target_uid
 
-    def get_target_bbox(self, uid):
-        aabb_min, aabb_max = p.getAABB(uid)
-        # Transform the coordinates to base_frame
-        aabb_min = np.array(aabb_min) - self.T_world_base.translation
-        aabb_max = np.array(aabb_max) - self.T_world_base.translation
-        return AABBox(aabb_min, aabb_max)
+scenes = {
+    "random": RandomScene,
+}
+
+
+def get_scene(scene_id):
+    if scene_id in scenes:
+        return scenes[scene_id]()
+    else:
+        raise ValueError("Unknown scene {}.".format(scene_id))

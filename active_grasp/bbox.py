@@ -7,8 +7,8 @@ from robot_helpers.ros.conversions import to_point_msg, from_point_msg
 
 class AABBox:
     def __init__(self, bbox_min, bbox_max):
-        self.min = bbox_min
-        self.max = bbox_max
+        self.min = np.asarray(bbox_min)
+        self.max = np.asarray(bbox_max)
 
     @property
     def corners(self):

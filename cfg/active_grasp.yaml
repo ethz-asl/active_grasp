@@ -2,6 +2,7 @@ bt_sim:
   gui: False
   cam_noise: True
   calib_error: True
+  scene: random
 
 grasp_controller:
   base_frame_id: panda_link0
