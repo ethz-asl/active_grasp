@@ -41,7 +41,7 @@ class TopTrajectory(MultiViewPolicy):
 class CircularTrajectory(MultiViewPolicy):
     def __init__(self, rate):
         super().__init__(rate)
-        self.r = 0.12
+        self.r = 0.08
         self.h = 0.3
         self.duration = 2.0 * np.pi * self.r / self.linear_vel
         self.m = scipy.interpolate.interp1d([0.0, self.duration], [np.pi, 3.0 * np.pi])

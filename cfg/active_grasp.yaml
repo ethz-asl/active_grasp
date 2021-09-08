@@ -1,8 +1,8 @@
 bt_sim:
-  gui: False
+  gui: true
   cam_noise: True
   calib_error: True
-  scene: random
+  scene: test.yaml
 
 grasp_controller:
   base_frame_id: panda_link0

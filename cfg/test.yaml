@@ -1,0 +1,9 @@
+center: [0.55, 0.0, 0.3]
+objects:
+- object_id: 003_cracker_box
+  rpy: [0.0, 0.0, 0.0]
+  xyz: [-0.08, 0.08, 0.002]
+- object_id: 010_potted_meat_can
+  rpy: [0.0, 0.0, 0.0]
+  xyz: [0.0, 0.0, 0.002]
+configuration: [0.0, -1.04, 0.17, -1.91, 0.0, 1.57, 0.79]

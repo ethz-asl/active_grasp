@@ -335,6 +335,8 @@ def apply_noise(img, k=1000, theta=0.001, sigma=0.005, l=4.0):
 def main():
     rospy.init_node("bt_sim")
     server = BtSimNode()
+    # server.seed(SeedRequest(1))
+    # server.reset(ResetRequest())
     server.run()
 
 

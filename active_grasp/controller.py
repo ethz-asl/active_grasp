@@ -50,8 +50,8 @@ class GraspController:
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
         rospy.sleep(1.0)  # wait for connections to be established
-        msg = to_pose_stamped_msg(Transform.t([0.4, 0, 0.4]), self.base_frame)
-        self.moveit.scene.add_box("table", msg, size=(0.5, 0.5, 0.02))
+        # msg = to_pose_stamped_msg(Transform.t([0.4, 0, 0.4]), self.base_frame)
+        # self.moveit.scene.add_box("table", msg, size=(0.5, 0.5, 0.02))
 
     def switch_to_cartesian_velocity_control(self):
         req = SwitchControllerRequest()
@@ -80,7 +80,7 @@ class GraspController:
             grasp = self.search_grasp(bbox)
 
         self.switch_to_joint_trajectory_control()
-        with Timer("execution_time"):
+        with Timer("grasp_time"):
             res = self.execute_grasp(grasp)
 
         return self.collect_info(res)
@@ -109,18 +109,13 @@ class GraspController:
     def execute_grasp(self, grasp):
         if not grasp:
             return "aborted"
-
         T_base_grasp = self.postprocess(grasp.pose)
-
         self.gripper.move(0.08)
-
         self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
         self.moveit.goto(T_base_grasp * self.T_grasp_ee)
         self.gripper.grasp()
         self.moveit.goto(Transform.t([0, 0, 0.1]) * T_base_grasp * self.T_grasp_ee)
-
         success = self.gripper.read() > 0.005
-
         return "succeeded" if success else "failed"
 
     def postprocess(self, T_base_grasp):
