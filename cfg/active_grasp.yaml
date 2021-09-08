@@ -1,7 +1,6 @@
 bt_sim:
-  gui: true
+  gui: False
   cam_noise: True
-  calib_error: True
   scene: test.yaml
 
 grasp_controller:

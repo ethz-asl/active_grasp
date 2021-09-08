@@ -291,11 +291,6 @@ class CameraPlugin(Plugin):
         self.camera = camera
         self.name = name
         self.cam_noise = rospy.get_param("~cam_noise", True)
-        if rospy.get_param("~calib_error"):
-            self.camera.calib_error = Transform(
-                Rotation.from_euler("xyz", [0.27, 0.034, 0.18], degrees=True),
-                np.r_[0.002, 0.0018, 0.0007],
-            )
         self.cv_bridge = cv_bridge.CvBridge()
         self.init_publishers()
 
