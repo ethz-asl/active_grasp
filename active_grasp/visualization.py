@@ -9,7 +9,7 @@ from vgn.utils import *
 
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("RedGreen", ["r", "g"])
 red = np.r_[1.0, 0.0, 0.0]
-blue = np.r_[31, 119, 180] / 255.0
+blue = np.r_[0, 0.6, 1.0]
 
 
 class Visualizer:
@@ -75,7 +75,7 @@ class Visualizer:
         color = [color[0], color[1], color[2], alpha]
         self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.006))
 
-    def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.6):
+    def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.8):
         if len(grasps) == 0:
             return
 
