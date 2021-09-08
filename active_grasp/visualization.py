@@ -8,6 +8,8 @@ from robot_helpers.spatial import Transform
 from vgn.utils import *
 
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("RedGreen", ["r", "g"])
+red = np.r_[1.0, 0.0, 0.0]
+blue = np.r_[31, 119, 180] / 255.0
 
 
 class Visualizer:
@@ -46,16 +48,32 @@ class Visualizer:
         self.marker_pub.publish(MarkerArray(markers=markers))
 
     def bbox(self, frame, bbox):
-        pose = Transform.translation((bbox.min + bbox.max) / 2.0)
-        scale = bbox.max - bbox.min
-        color = np.r_[0.8, 0.2, 0.2, 0.6]
-        marker = create_cube_marker(frame, pose, scale, color, ns="bbox")
+        pose = Transform.identity()
+        scale = [0.004, 0.0, 0.0]
+        color = red
+        corners = bbox.corners
+        edges = [
+            (0, 1),
+            (1, 3),
+            (3, 2),
+            (2, 0),
+            (4, 5),
+            (5, 7),
+            (7, 6),
+            (6, 4),
+            (0, 4),
+            (1, 5),
+            (3, 7),
+            (2, 6),
+        ]
+        lines = [(corners[s], corners[e]) for s, e in edges]
+        marker = create_line_list_marker(frame, pose, scale, color, lines, ns="bbox")
         self.draw([marker])
 
     def best_grasp(self, frame, grasp, score, smin=0.9, smax=1.0, alpha=1.0):
         color = cmap((score - smin) / (smax - smin))
         color = [color[0], color[1], color[2], alpha]
-        self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.01))
+        self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.006))
 
     def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.6):
         if len(grasps) == 0:
@@ -87,7 +105,7 @@ class Visualizer:
         self.map_cloud_pub.publish(msg)
 
     def path(self, frame, poses):
-        color = np.r_[31, 119, 180] / 255.0
+        color = blue
         points = [p.translation for p in poses]
         spheres = create_sphere_list_marker(
             frame,
@@ -199,7 +217,7 @@ def create_grasp_markers(
     ns,
     id=0,
     finger_depth=0.05,
-    radius=0.005,
+    radius=0.003,
 ):
     w, d = grasp.width, finger_depth
 
