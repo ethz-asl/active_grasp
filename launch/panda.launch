@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- Parameters -->
+  <arg name="launch_rviz" default="false" />
+  <arg name="robot_ip" default="172.16.0.2" />
+
+  <!-- Transforms -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="to_world" args="0 0 0 0 0 0 world panda_link0" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="to_camera" args="0.03226862 -0.06137175  0.04107702 0.00099995 0. 0.39898185 0.91695828 panda_link8 camera_depth_optical_frame" />
+
+  <!-- Launch camera driver -->
+  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+    <arg name="enable_pointcloud" value="true" />
+    <arg name="publish_tf" value="false" />
+  </include>
+
+  <!-- Launch panda driver -->
+  <include file="$(find franka_control)/launch/franka_control.launch">
+    <arg name="robot_ip" value="$(arg robot_ip)" />
+    <!-- <arg name="load_robot_description" value="$(arg load_robot_description)" /> -->
+  </include>
+
+  <!-- Launch rviz -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find active_grasp)/launch/active_grasp.rviz" if="$(arg launch_rviz)" />
+</launch>
