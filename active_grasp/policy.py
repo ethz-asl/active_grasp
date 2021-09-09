@@ -78,8 +78,7 @@ class Policy:
         return grasps[indices], scores[indices]
 
     def score_fn(self, grasp):
-        # return grasp.quality
-        return grasp.pose.translation[2]
+        return grasp.quality
 
     def update(self, img, pose):
         raise NotImplementedError

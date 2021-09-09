@@ -40,7 +40,7 @@ class Simulation:
         self.arm = BtPandaArm(panda_urdf)
         self.gripper = BtPandaGripper(self.arm)
         self.model = Model(panda_urdf, self.arm.base_frame, self.arm.ee_frame)
-        self.camera = BtCamera(320, 240, 1.047, 0.1, 1.0, self.arm.uid, 11)
+        self.camera = BtCamera(320, 240, 0.96, 0.2, 1.0, self.arm.uid, 11)
 
     def seed(self, seed):
         self.rng = np.random.default_rng(seed)
@@ -123,7 +123,6 @@ def find_urdfs(root):
 class RandomScene(Scene):
     def __init__(self):
         super().__init__()
-        # self.center = np.r_[0.5, 0.0, 0.2]
         self.center = np.r_[0.6, 0.0, 0.1]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
@@ -161,19 +160,24 @@ class RandomScene(Scene):
 class CustomScene(Scene):
     def __init__(self, config_name):
         super().__init__()
-        config_path = Path(rospack.get_path("active_grasp")) / "cfg" / config_name
-        with config_path.open("r") as f:
+        self.config_path = (
+            Path(rospack.get_path("active_grasp")) / "cfg" / "scenes" / config_name
+        )
+
+    def load_config(self):
+        with self.config_path.open("r") as f:
             self.scene = yaml.load(f)
         self.center = np.asarray(self.scene["center"])
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
 
     def load(self, rng):
+        self.load_config()
         self.load_support(self.center)
         for object in self.scene["objects"]:
             self.load_object(
                 self.get_ycb_urdf_path(object["object_id"]),
-                Rotation.from_euler("xyz", object["rpy"]),
+                Rotation.from_euler("xyz", object["rpy"], degrees=True),
                 self.center + np.asarray(object["xyz"]),
             )
 
