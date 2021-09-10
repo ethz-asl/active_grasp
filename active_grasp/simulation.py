@@ -40,15 +40,15 @@ class Simulation:
         self.arm = BtPandaArm(panda_urdf)
         self.gripper = BtPandaGripper(self.arm)
         self.model = Model(panda_urdf, self.arm.base_frame, self.arm.ee_frame)
-        self.camera = BtCamera(320, 240, 0.96, 0.2, 1.0, self.arm.uid, 11)
+        self.camera = BtCamera(320, 240, 0.96, 0.01, 1.0, self.arm.uid, 11)
 
     def seed(self, seed):
         self.rng = np.random.default_rng(seed)
 
     def reset(self):
-        self.scene.reset(rng=self.rng)
         q = self.scene.sample_initial_configuration(self.rng)
         self.set_arm_configuration(q)
+        self.scene.reset(rng=self.rng)
         uid = self.select_target()
         bbox = self.get_target_bbox(uid)
         return bbox
@@ -179,10 +179,13 @@ class CustomScene(Scene):
                 self.get_ycb_urdf_path(object["object_id"]),
                 Rotation.from_euler("xyz", object["rpy"], degrees=True),
                 self.center + np.asarray(object["xyz"]),
+                object.get("scale", 1),
             )
+        for _ in range(60):
+            p.stepSimulation()
 
     def sample_initial_configuration(self, rng):
-        return self.scene["configuration"]
+        return self.scene["q"]
 
 
 def get_scene(scene_id):

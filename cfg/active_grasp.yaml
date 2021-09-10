@@ -13,7 +13,7 @@ grasp_controller:
     frame_id: camera_optical_frame
     info_topic: /camera/depth/camera_info
     depth_topic: /camera/depth/image_raw
-    min_z_dist: 0.22
+    min_z_dist: 0.26
     
 vgn:
   model: $(find vgn)/assets/models/vgn_conv.pth

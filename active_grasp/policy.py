@@ -33,9 +33,10 @@ class Policy:
 
     def activate(self, bbox):
         self.bbox = bbox
-        self.calibrate_task_frame()
         self.vis.clear()
+        self.calibrate_task_frame()
         self.vis.bbox(self.base_frame, bbox)
+        self.vis.workspace(self.task_frame, 0.3)
         self.tsdf = UniformTSDFVolume(0.3, 40)
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
         self.views = []
@@ -47,7 +48,7 @@ class Policy:
         self.T_base_task = Transform.translation(self.center - np.full(3, 0.15))
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
-        rospy.sleep(0.1)
+        rospy.sleep(0.5)
 
     def compute_error(self, x_d, x):
         linear = x_d.translation - x.translation
@@ -67,6 +68,13 @@ class Policy:
 
         for grasp in in_grasps:
             pose = self.T_base_task * grasp.pose
+
+            R, t = pose.rotation, pose.translation
+
+            # Filter out artifacts close to the support
+            if t[2] < self.bbox.min[2] + 0.04:
+                continue
+
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
@@ -97,7 +105,7 @@ class SingleViewPolicy(Policy):
             self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
 
             out = self.vgn.predict(tsdf_grid)
-            self.vis.quality(self.task_frame, voxel_size, out.qual)
+            self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
 
             grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
             grasps, scores = self.sort_grasps(grasps)
@@ -122,6 +130,7 @@ class MultiViewPolicy(Policy):
 
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         out = self.vgn.predict(tsdf_grid)
+        self.vis.quality(self.task_frame, self.tsdf.voxel_size, out.qual, 0.5)
 
         grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
         grasps, scores = self.sort_grasps(grasps)

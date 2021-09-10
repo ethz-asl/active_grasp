@@ -137,8 +137,8 @@ class Visualizer:
         )
         self.draw([marker])
 
-    def quality(self, frame, voxel_size, quality):
-        points, values = grid_to_map_cloud(voxel_size, quality, threshold=0.9)
+    def quality(self, frame, voxel_size, quality, threshold=0.9):
+        points, values = grid_to_map_cloud(voxel_size, quality, threshold)
         values = (values - 0.9) / (1.0 - 0.9)  # to increase contrast
         msg = to_cloud_msg(frame, points, intensities=values)
         self.quality_pub.publish(msg)
@@ -168,6 +168,28 @@ class Visualizer:
             )
             markers.append(marker)
         self.draw(markers)
+
+    def workspace(self, frame, size):
+        scale = size * 0.005
+        pose = Transform.identity()
+        scale = [scale, 0.0, 0.0]
+        color = [0.5, 0.5, 0.5]
+        lines = [
+            ([0.0, 0.0, 0.0], [size, 0.0, 0.0]),
+            ([size, 0.0, 0.0], [size, size, 0.0]),
+            ([size, size, 0.0], [0.0, size, 0.0]),
+            ([0.0, size, 0.0], [0.0, 0.0, 0.0]),
+            ([0.0, 0.0, size], [size, 0.0, size]),
+            ([size, 0.0, size], [size, size, size]),
+            ([size, size, size], [0.0, size, size]),
+            ([0.0, size, size], [0.0, 0.0, size]),
+            ([0.0, 0.0, 0.0], [0.0, 0.0, size]),
+            ([size, 0.0, 0.0], [size, 0.0, size]),
+            ([size, size, 0.0], [size, size, size]),
+            ([0.0, size, 0.0], [0.0, size, size]),
+        ]
+        msg = create_line_list_marker(frame, pose, scale, color, lines, ns="workspace")
+        self.draw([msg])
 
 
 def create_cam_view_marker(
