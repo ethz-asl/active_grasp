@@ -47,7 +47,7 @@ class Policy:
         self.T_base_task = Transform.translation(self.bbox.center - np.full(3, 0.15))
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
-        rospy.sleep(0.5)  # Wait for tf tree to be updated.
+        rospy.sleep(0.5)  # Wait for tf tree to be updated
         self.vis.workspace(self.task_frame, 0.3)
 
     def update(self, img, pose):
@@ -59,7 +59,6 @@ class Policy:
 
         for grasp in in_grasps:
             pose = self.T_base_task * grasp.pose
-
             R, t = pose.rotation, pose.translation
 
             # Filter out artifacts close to the support
@@ -102,6 +101,11 @@ class SingleViewPolicy(Policy):
 
 
 class MultiViewPolicy(Policy):
+    def activate(self, bbox, view_sphere):
+        super().activate(bbox, view_sphere)
+        self.T = 5  # Window size of grasp prediction history
+        self.qual_hist = np.zeros((self.T,) + (40,) * 3, np.float32)
+
     def integrate(self, img, x):
         self.views.append(x)
         self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
@@ -113,6 +117,9 @@ class MultiViewPolicy(Policy):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         out = self.vgn.predict(tsdf_grid)
         self.vis.quality(self.task_frame, self.tsdf.voxel_size, out.qual, 0.5)
+
+        t = (len(self.views) - 1) % self.T
+        self.qual_hist[t, ...] = out.qual
 
         grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
         grasps, scores = self.sort_grasps(grasps)

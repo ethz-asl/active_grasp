@@ -24,7 +24,7 @@ class NextBestView(MultiViewPolicy):
                 self.view_candidates.append(view)
 
     def update(self, img, x):
-        if len(self.views) > self.max_views:
+        if len(self.views) > self.max_views or self.best_grasp_prediction_is_stable():
             self.done = True
         else:
             self.integrate(img, x)
@@ -36,6 +36,19 @@ class NextBestView(MultiViewPolicy):
             i = np.argmax(utilities)
             nbv, _ = views[i], gains[i]
             self.x_d = nbv
+
+    def best_grasp_prediction_is_stable(self):
+        if self.best_grasp:
+            t = (self.T_task_base * self.best_grasp.pose).translation
+            i, j, k = (t / self.tsdf.voxel_size).astype(int)
+            qs = self.qual_hist[:, i, j, k]
+            if (
+                np.count_nonzero(qs) == self.T
+                and np.mean(qs) > 0.9
+                and np.std(qs) < 0.05
+            ):
+                return True
+        return False
 
     def ig_fn(self, view, downsample=20):
         fx = self.intrinsic.fx / downsample
