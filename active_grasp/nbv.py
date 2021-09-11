@@ -13,28 +13,24 @@ class NextBestView(MultiViewPolicy):
         self.min_ig = 10.0
         self.cost_factor = 10.0
 
+    def activate(self, bbox):
+        super().activate(bbox)
+        self.generate_view_candidates()
+
     def update(self, img, x):
         if len(self.views) > self.max_views:
             self.done = True
             return np.zeros(6)
         else:
             self.integrate(img, x)
-
-            views = self.generate_views()
+            views = self.view_candidates
             gains = self.compute_expected_information_gains(views)
             costs = self.compute_movement_costs(views)
             utilities = gains / np.sum(gains) - costs / np.sum(costs)
-
             self.vis.views(self.base_frame, self.intrinsic, views, utilities)
             i = np.argmax(utilities)
             nbv, ig = views[i], gains[i]
-
-            # if ig < self.min_ig:
-            #     self.done = True
-            #     return np.zeros(6)
-
             cmd = self.compute_velocity_cmd(*self.compute_error(nbv, x))
-
             if self.best_grasp:
                 R, t = self.best_grasp.pose.rotation, self.best_grasp.pose.translation
                 if np.linalg.norm(t - x.translation) < self.min_z_dist:
@@ -46,26 +42,23 @@ class NextBestView(MultiViewPolicy):
                 up = np.r_[1.0, 0.0, 0.0]
                 x_d = look_at(eye, center, up)
                 cmd = self.compute_velocity_cmd(*self.compute_error(x_d, x))
-
             return cmd
 
-    def generate_views(self):
-        r, h = 0.18, 0.2
+    def generate_view_candidates(self):
+        center = np.r_[self.center[:2], self.bbox.max[2]]
+        r = self.min_z_dist
         thetas = np.arange(1, 4) * np.deg2rad(30)
         phis = np.arange(1, 6) * np.deg2rad(60)
-        views = []
+        self.view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
-            eye = self.center + np.r_[0, 0, h] + spherical_to_cartesian(r, theta, phi)
+            eye = center + spherical_to_cartesian(r, theta, phi)
             target = self.center
             up = np.r_[1.0, 0.0, 0.0]
-            views.append(look_at(eye, target, up))
-        return views
+            view = look_at(eye, target, up)
+            self.view_candidates.append(view)
 
     def compute_expected_information_gains(self, views):
         return [self.ig_fn(v) for v in views]
-
-    def compute_movement_costs(self, views):
-        return [self.cost_fn(v) for v in views]
 
     def ig_fn(self, view, downsample=20):
         fx = self.intrinsic.fx / downsample
@@ -127,6 +120,9 @@ class NextBestView(MultiViewPolicy):
         ig = np.logical_and(tsdfs > 0.0, tsdfs < 0.5).sum()
 
         return ig
+
+    def compute_movement_costs(self, views):
+        return [self.cost_fn(v) for v in views]
 
     def cost_fn(self, view):
         return 1.0
