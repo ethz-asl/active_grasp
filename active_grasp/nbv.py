@@ -16,6 +16,14 @@ class NextBestView(MultiViewPolicy):
     def activate(self, bbox):
         super().activate(bbox)
         self.generate_view_candidates()
+        # self.vis.views(
+        #     self.base_frame,
+        #     self.intrinsic,
+        #     self.view_candidates,
+        #     np.ones(len(self.view_candidates)),
+        # )
+        # rospy.sleep(1.0)
+        # return
 
     def update(self, img, x):
         if len(self.views) > self.max_views:
@@ -55,7 +63,8 @@ class NextBestView(MultiViewPolicy):
             target = self.center
             up = np.r_[1.0, 0.0, 0.0]
             view = look_at(eye, target, up)
-            self.view_candidates.append(view)
+            if self.is_view_feasible(view):
+                self.view_candidates.append(view)
 
     def compute_expected_information_gains(self, views):
         return [self.ig_fn(v) for v in views]
