@@ -9,6 +9,7 @@ class AABBox:
     def __init__(self, bbox_min, bbox_max):
         self.min = np.asarray(bbox_min)
         self.max = np.asarray(bbox_max)
+        self.center = 0.5 * (self.min + self.max)
 
     @property
     def corners(self):

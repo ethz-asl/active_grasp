@@ -8,7 +8,7 @@ from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from vgn.detection import *
 from vgn.perception import UniformTSDFVolume
-from vgn.utils import *
+from vgn.utils import look_at, spherical_to_cartesian
 
 
 class Policy:
@@ -37,26 +37,31 @@ class Policy:
         self.T_cam_ee = tf.lookup(self.cam_frame, "panda_link8")
 
     def activate(self, bbox):
-        self.bbox = bbox
         self.vis.clear()
+
+        self.bbox = bbox
+        self.vis.bbox(self.base_frame, self.bbox)
+
+        self.view_sphere = ViewSphere(bbox)
+
         self.calibrate_task_frame()
-        self.vis.bbox(self.base_frame, bbox)
-        self.vis.workspace(self.task_frame, 0.3)
+
         self.tsdf = UniformTSDFVolume(0.3, 40)
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
+
         self.views = []
         self.best_grasp = None
         self.done = False
 
     def calibrate_task_frame(self):
-        self.center = 0.5 * (self.bbox.min + self.bbox.max)
-        self.T_base_task = Transform.translation(self.center - np.full(3, 0.15))
+        self.T_base_task = Transform.translation(self.bbox.center - np.full(3, 0.15))
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
-        rospy.sleep(0.5)
+        rospy.sleep(0.5)  # Wait for tf tree to be updated.
+        self.vis.workspace(self.task_frame, 0.3)
 
-    def score_fn(self, grasp):
-        return grasp.quality
+    def update(self, img, pose):
+        raise NotImplementedError
 
     def sort_grasps(self, in_grasps):
         # Transforms grasps into base frame, checks whether they lie on the target, and sorts by their score
@@ -81,18 +86,13 @@ class Policy:
         indices = np.argsort(-scores)
         return grasps[indices], scores[indices]
 
-    def update(self, img, pose):
-        raise NotImplementedError
+    def score_fn(self, grasp):
+        return grasp.quality
 
     def is_view_feasible(self, view):
         # Check whether MoveIt can find a trajectory to the given view
         success, _ = self.moveit.plan(view * self.T_cam_ee)
         return success
-
-    def compute_error(self, x_d, x):
-        linear = x_d.translation - x.translation
-        angular = (x_d.rotation * x.rotation.inv()).as_rotvec()
-        return linear, angular
 
     def compute_velocity_cmd(self, linear, angular):
         kp = 4.0
@@ -104,7 +104,7 @@ class Policy:
 
 class SingleViewPolicy(Policy):
     def update(self, img, x):
-        linear, angular = self.compute_error(self.x_d, x)
+        linear, angular = compute_error(self.x_d, x)
 
         if np.linalg.norm(linear) < 0.02:
             self.views.append(x)
@@ -150,6 +150,27 @@ class MultiViewPolicy(Policy):
             self.vis.best_grasp(self.base_frame, grasps[0], scores[0])
 
         self.vis.grasps(self.base_frame, grasps, scores)
+
+
+class ViewSphere:
+    # Define sphere for view generation on top of the bbox.
+    # TODO an ellipse around the bbox's center would be even nicer ;)
+
+    def __init__(self, bbox):
+        self.center = np.r_[bbox.center[:2], bbox.max[2]]
+        self.r = rospy.get_param("~camera/min_z_dist")
+        self.target = bbox.center
+
+    def get_view(self, theta, phi):
+        eye = self.center + spherical_to_cartesian(self.r, theta, phi)
+        up = np.r_[1.0, 0.0, 0.0]
+        return look_at(eye, self.target, up)
+
+
+def compute_error(x_d, x):
+    linear = x_d.translation - x.translation
+    angular = (x_d.rotation * x.rotation.inv()).as_rotvec()
+    return linear, angular
 
 
 registry = {}

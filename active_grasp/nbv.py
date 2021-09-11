@@ -2,8 +2,8 @@ import itertools
 import numpy as np
 import rospy
 
-from .policy import MultiViewPolicy
-from vgn.utils import look_at, spherical_to_cartesian
+from .policy import MultiViewPolicy, compute_error
+from vgn.utils import look_at
 
 
 class NextBestView(MultiViewPolicy):
@@ -16,14 +16,6 @@ class NextBestView(MultiViewPolicy):
     def activate(self, bbox):
         super().activate(bbox)
         self.generate_view_candidates()
-        # self.vis.views(
-        #     self.base_frame,
-        #     self.intrinsic,
-        #     self.view_candidates,
-        #     np.ones(len(self.view_candidates)),
-        # )
-        # rospy.sleep(1.0)
-        # return
 
     def update(self, img, x):
         if len(self.views) > self.max_views:
@@ -38,7 +30,7 @@ class NextBestView(MultiViewPolicy):
             self.vis.views(self.base_frame, self.intrinsic, views, utilities)
             i = np.argmax(utilities)
             nbv, ig = views[i], gains[i]
-            cmd = self.compute_velocity_cmd(*self.compute_error(nbv, x))
+            cmd = self.compute_velocity_cmd(*compute_error(nbv, x))
             if self.best_grasp:
                 R, t = self.best_grasp.pose.rotation, self.best_grasp.pose.translation
                 if np.linalg.norm(t - x.translation) < self.min_z_dist:
@@ -49,20 +41,15 @@ class NextBestView(MultiViewPolicy):
                 eye = R.apply([0.0, 0.0, -0.2]) + t
                 up = np.r_[1.0, 0.0, 0.0]
                 x_d = look_at(eye, center, up)
-                cmd = self.compute_velocity_cmd(*self.compute_error(x_d, x))
+                cmd = self.compute_velocity_cmd(*compute_error(x_d, x))
             return cmd
 
     def generate_view_candidates(self):
-        center = np.r_[self.center[:2], self.bbox.max[2]]
-        r = self.min_z_dist
         thetas = np.arange(1, 4) * np.deg2rad(30)
         phis = np.arange(1, 6) * np.deg2rad(60)
         self.view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
-            eye = center + spherical_to_cartesian(r, theta, phi)
-            target = self.center
-            up = np.r_[1.0, 0.0, 0.0]
-            view = look_at(eye, target, up)
+            view = self.view_sphere.get_view(theta, phi)
             if self.is_view_feasible(view):
                 self.view_candidates.append(view)
 
