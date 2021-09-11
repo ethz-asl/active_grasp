@@ -6,7 +6,7 @@ import rospkg
 
 from active_grasp.bbox import AABBox
 from robot_helpers.bullet import *
-from robot_helpers.model import Model
+from robot_helpers.model import KDLModel
 from robot_helpers.spatial import Rotation
 
 
@@ -36,10 +36,12 @@ class Simulation:
 
     def load_robot(self):
         path = Path(rospack.get_path("active_grasp"))
-        panda_urdf = path / "assets/urdfs/franka/panda_arm_hand.urdf"
-        self.arm = BtPandaArm(panda_urdf)
+        panda_urdf_path = path / "assets/urdfs/franka/panda_arm_hand.urdf"
+        self.arm = BtPandaArm(panda_urdf_path)
         self.gripper = BtPandaGripper(self.arm)
-        self.model = Model(panda_urdf, self.arm.base_frame, self.arm.ee_frame)
+        self.model = KDLModel.from_urdf_file(
+            panda_urdf_path, self.arm.base_frame, self.arm.ee_frame
+        )
         self.camera = BtCamera(320, 240, 0.96, 0.01, 1.0, self.arm.uid, 11)
 
     def seed(self, seed):

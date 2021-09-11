@@ -90,7 +90,7 @@ class GraspController:
         return from_bbox_msg(res.bbox)
 
     def search_grasp(self, bbox):
-        self.view_sphere = ViewHalfSphere(bbox, self.min_z_dist, self.moveit)
+        self.view_sphere = ViewHalfSphere(bbox, self.min_z_dist)
         self.policy.activate(bbox, self.view_sphere)
         timer = rospy.Timer(rospy.Duration(1.0 / self.control_rate), self.send_vel_cmd)
         r = rospy.Rate(self.policy_rate)
@@ -160,12 +160,9 @@ class GraspController:
 
 
 class ViewHalfSphere:
-    # TODO move feasibility check to a robot interface module
-    def __init__(self, bbox, min_z_dist, moveit):
+    def __init__(self, bbox, min_z_dist):
         self.center = bbox.center
         self.r = 0.5 * bbox.size[2] + min_z_dist
-        self.moveit = moveit
-        self.T_cam_ee = tf.lookup("camera_depth_optical_frame", "panda_link8")
 
     def get_view(self, theta, phi):
         eye = self.center + spherical_to_cartesian(self.r, theta, phi)
@@ -174,7 +171,3 @@ class ViewHalfSphere:
 
     def sample_view(self):
         raise NotImplementedError
-
-    def is_feasible(self, view):
-        success, _ = self.moveit.plan(view * self.T_cam_ee)
-        return success

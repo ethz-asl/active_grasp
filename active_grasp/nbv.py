@@ -20,7 +20,7 @@ class NextBestView(MultiViewPolicy):
         self.view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
             view = self.view_sphere.get_view(theta, phi)
-            if self.view_sphere.is_feasible(view):
+            if self.is_feasible(view):
                 self.view_candidates.append(view)
 
     def update(self, img, x):

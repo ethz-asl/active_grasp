@@ -4,6 +4,7 @@ from pathlib import Path
 import rospy
 
 from .visualization import Visualizer
+from robot_helpers.model import KDLModel
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from vgn.detection import *
@@ -11,20 +12,29 @@ from vgn.perception import UniformTSDFVolume
 
 
 class Policy:
-    def __init__(self, rate=5):
+    def __init__(self):
         self.load_parameters()
+        self.init_robot_model()
         self.init_visualizer()
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
+        self.cam_frame = rospy.get_param("~camera/frame_id")
         self.task_frame = "task"
         info_topic = rospy.get_param("~camera/info_topic")
         msg = rospy.wait_for_message(info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
         self.qual_threshold = rospy.get_param("vgn/qual_threshold")
 
+    def init_robot_model(self):
+        self.model = KDLModel.from_parameter_server(self.base_frame, self.cam_frame)
+
     def init_visualizer(self):
         self.vis = Visualizer()
+
+    def is_feasible(self, view, q_init=None):
+        q_init = q_init if q_init else [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]
+        return self.model.ik(q_init, view) is not None
 
     def activate(self, bbox, view_sphere):
         self.vis.clear()
