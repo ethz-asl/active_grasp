@@ -17,6 +17,7 @@ class TopView(SingleViewPolicy):
         eye = np.r_[self.center[:2], self.bbox.max[2] + self.min_z_dist]
         up = np.r_[1.0, 0.0, 0.0]
         self.x_d = look_at(eye, self.center, up)
+        self.done = False if self.is_view_feasible(self.x_d) else True
 
 
 class TopTrajectory(MultiViewPolicy):
@@ -25,6 +26,7 @@ class TopTrajectory(MultiViewPolicy):
         eye = np.r_[self.center[:2], self.bbox.max[2] + self.min_z_dist]
         up = np.r_[1.0, 0.0, 0.0]
         self.x_d = look_at(eye, self.center, up)
+        self.done = False if self.is_view_feasible(self.x_d) else True
 
     def update(self, img, x):
         self.integrate(img, x)

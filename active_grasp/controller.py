@@ -20,7 +20,6 @@ class GraspController:
     def __init__(self, policy):
         self.policy = policy
         self.load_parameters()
-        self.lookup_transforms()
         self.init_service_proxies()
         self.init_robot_connection()
         self.init_moveit()
@@ -32,10 +31,6 @@ class GraspController:
         self.cam_frame = rospy.get_param("~camera/frame_id")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
         self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
-
-    def lookup_transforms(self):
-        tf.init()
-        self.T_ee_cam = tf.lookup(self.ee_frame, self.cam_frame)
 
     def init_service_proxies(self):
         self.reset_env = rospy.ServiceProxy("reset", Reset)
@@ -52,6 +47,7 @@ class GraspController:
         rospy.sleep(1.0)  # wait for connections to be established
         # msg = to_pose_stamped_msg(Transform.t([0.4, 0, 0.4]), self.base_frame)
         # self.moveit.scene.add_box("table", msg, size=(0.5, 0.5, 0.02))
+        self.policy.moveit = self.moveit
 
     def switch_to_cartesian_velocity_control(self):
         req = SwitchControllerRequest()

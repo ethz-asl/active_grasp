@@ -16,9 +16,11 @@ class Policy:
         self.rate = rate
         self.load_parameters()
         self.init_visualizer()
+        self.lookup_transforms()
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
+        self.cam_frame = rospy.get_param("~camera/frame_id")
         info_topic = rospy.get_param("~camera/info_topic")
         self.linear_vel = rospy.get_param("~linear_vel")
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
@@ -30,6 +32,9 @@ class Policy:
 
     def init_visualizer(self):
         self.vis = Visualizer()
+
+    def lookup_transforms(self):
+        self.T_cam_ee = tf.lookup(self.cam_frame, "panda_link8")
 
     def activate(self, bbox):
         self.bbox = bbox
@@ -50,17 +55,8 @@ class Policy:
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
         rospy.sleep(0.5)
 
-    def compute_error(self, x_d, x):
-        linear = x_d.translation - x.translation
-        angular = (x_d.rotation * x.rotation.inv()).as_rotvec()
-        return linear, angular
-
-    def compute_velocity_cmd(self, linear, angular):
-        kp = 4.0
-        linear = kp * linear
-        scale = np.linalg.norm(linear)
-        linear *= np.clip(scale, 0.0, self.linear_vel) / scale
-        return np.r_[linear, angular]
+    def score_fn(self, grasp):
+        return grasp.quality
 
     def sort_grasps(self, in_grasps):
         # Transforms grasps into base frame, checks whether they lie on the target, and sorts by their score
@@ -85,11 +81,25 @@ class Policy:
         indices = np.argsort(-scores)
         return grasps[indices], scores[indices]
 
-    def score_fn(self, grasp):
-        return grasp.quality
-
     def update(self, img, pose):
         raise NotImplementedError
+
+    def is_view_feasible(self, view):
+        # Check whether MoveIt can find a trajectory to the given view
+        success, _ = self.moveit.plan(view * self.T_cam_ee)
+        return success
+
+    def compute_error(self, x_d, x):
+        linear = x_d.translation - x.translation
+        angular = (x_d.rotation * x.rotation.inv()).as_rotvec()
+        return linear, angular
+
+    def compute_velocity_cmd(self, linear, angular):
+        kp = 4.0
+        linear = kp * linear
+        scale = np.linalg.norm(linear)
+        linear *= np.clip(scale, 0.0, self.linear_vel) / scale
+        return np.r_[linear, angular]
 
 
 class SingleViewPolicy(Policy):

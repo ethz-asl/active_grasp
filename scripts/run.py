@@ -8,10 +8,12 @@ from tqdm import tqdm
 from active_grasp.controller import *
 from active_grasp.policy import make, registry
 from active_grasp.srv import Seed
+from robot_helpers.ros import tf
 
 
 def main():
     rospy.init_node("grasp_controller")
+    tf.init()
 
     parser = create_parser()
     args = parser.parse_args()
