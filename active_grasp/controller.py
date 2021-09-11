@@ -14,6 +14,7 @@ from robot_helpers.ros.conversions import *
 from robot_helpers.ros.panda import PandaGripperClient
 from robot_helpers.ros.moveit import MoveItClient
 from robot_helpers.spatial import Rotation, Transform
+from vgn.utils import look_at, cartesian_to_spherical, spherical_to_cartesian
 
 
 class GraspController:
@@ -27,10 +28,13 @@ class GraspController:
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
-        self.ee_frame = rospy.get_param("~ee_frame_id")
+        self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
         self.cam_frame = rospy.get_param("~camera/frame_id")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
-        self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
+        self.min_z_dist = rospy.get_param("~camera/min_z_dist")
+        self.control_rate = rospy.get_param("~control_rate")
+        self.linear_vel = rospy.get_param("~linear_vel")
+        self.policy_rate = rospy.get_param("~policy_rate")
 
     def init_service_proxies(self):
         self.reset_env = rospy.ServiceProxy("reset", Reset)
@@ -44,10 +48,9 @@ class GraspController:
 
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
-        rospy.sleep(1.0)  # wait for connections to be established
+        rospy.sleep(1.0)  # Wait for connections to be established.
         # msg = to_pose_stamped_msg(Transform.t([0.4, 0, 0.4]), self.base_frame)
         # self.moveit.scene.add_box("table", msg, size=(0.5, 0.5, 0.02))
-        self.policy.moveit = self.moveit
 
     def switch_to_cartesian_velocity_control(self):
         req = SwitchControllerRequest()
@@ -83,17 +86,20 @@ class GraspController:
 
     def reset(self):
         res = self.reset_env(ResetRequest())
-        rospy.sleep(1.0)  # wait for states to be updated
+        rospy.sleep(1.0)  # Wait for the TF tree to be updated.
         return from_bbox_msg(res.bbox)
 
     def search_grasp(self, bbox):
-        self.policy.activate(bbox)
-        r = rospy.Rate(self.policy.rate)
+        self.view_sphere = ViewHalfSphere(bbox, self.min_z_dist, self.moveit)
+        self.policy.activate(bbox, self.view_sphere)
+        timer = rospy.Timer(rospy.Duration(1.0 / self.control_rate), self.send_vel_cmd)
+        r = rospy.Rate(self.policy_rate)
         while not self.policy.done:
             img, pose = self.get_state()
-            cmd = self.policy.update(img, pose)
-            self.cartesian_vel_pub.publish(to_twist_msg(cmd))
+            self.policy.update(img, pose)
             r.sleep()
+        rospy.sleep(0.1)  # Wait for a zero command to be sent to the robot.
+        timer.shutdown()
         return self.policy.best_grasp
 
     def get_state(self):
@@ -101,6 +107,26 @@ class GraspController:
         img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
         pose = tf.lookup(self.base_frame, self.cam_frame, msg.header.stamp)
         return img, pose
+
+    def send_vel_cmd(self, event):
+        if self.policy.x_d is None or self.policy.done:
+            cmd = np.zeros(6)
+        else:
+            x = tf.lookup(self.base_frame, self.cam_frame)
+            cmd = self.compute_velocity_cmd(self.policy.x_d, x)
+        self.cartesian_vel_pub.publish(to_twist_msg(cmd))
+
+    def compute_velocity_cmd(self, x_d, x):
+        # TODO verify that the frames are handled correctly
+        r, theta, phi = cartesian_to_spherical(x.translation - self.view_sphere.center)
+        e_t = x_d.translation - x.translation
+        e_n = (self.view_sphere.center - x.translation) * (r - self.view_sphere.r) / r
+        linear = 1.0 * e_t + 10.0 * e_n
+        scale = np.linalg.norm(linear)
+        linear *= np.clip(scale, 0.0, self.linear_vel) / scale
+        angular = self.view_sphere.get_view(theta, phi).rotation * x.rotation.inv()
+        angular = 0.5 * angular.as_rotvec()
+        return np.r_[linear, angular]
 
     def execute_grasp(self, grasp):
         if not grasp:
@@ -131,3 +157,24 @@ class GraspController:
         }
         info.update(Timer.timers)
         return info
+
+
+class ViewHalfSphere:
+    # TODO move feasibility check to a robot interface module
+    def __init__(self, bbox, min_z_dist, moveit):
+        self.center = bbox.center
+        self.r = 0.5 * bbox.size[2] + min_z_dist
+        self.moveit = moveit
+        self.T_cam_ee = tf.lookup("camera_depth_optical_frame", "panda_link8")
+
+    def get_view(self, theta, phi):
+        eye = self.center + spherical_to_cartesian(self.r, theta, phi)
+        up = np.r_[1.0, 0.0, 0.0]
+        return look_at(eye, self.center, up)
+
+    def sample_view(self):
+        raise NotImplementedError
+
+    def is_feasible(self, view):
+        success, _ = self.moveit.plan(view * self.T_cam_ee)
+        return success

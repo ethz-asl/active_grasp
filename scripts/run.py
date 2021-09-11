@@ -18,11 +18,12 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    policy = make(args.policy, args.rate)
+    policy = make(args.policy)
     controller = GraspController(policy)
     logger = Logger(args)
 
     seed_simulation(args.seed)
+    rospy.sleep(1.0)  # Prevents a rare race condiion
 
     for _ in tqdm(range(args.runs)):
         info = controller.run()
@@ -34,7 +35,6 @@ def create_parser():
     parser.add_argument("policy", type=str, choices=registry.keys())
     parser.add_argument("--runs", type=int, default=100)
     parser.add_argument("--logdir", type=Path, default="logs")
-    parser.add_argument("--rate", type=int, default=5)
     parser.add_argument("--seed", type=int, default=1)
     return parser
 
@@ -42,10 +42,9 @@ def create_parser():
 class Logger:
     def __init__(self, args):
         stamp = datetime.now().strftime("%y%m%d-%H%M%S")
-        name = "{}_policy={},rate={},seed={}.csv".format(
+        name = "{}_policy={},seed={}.csv".format(
             stamp,
             args.policy,
-            args.rate,
             args.seed,
         )
         self.path = args.logdir / name

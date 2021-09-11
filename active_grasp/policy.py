@@ -8,41 +8,30 @@ from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from vgn.detection import *
 from vgn.perception import UniformTSDFVolume
-from vgn.utils import look_at, spherical_to_cartesian
 
 
 class Policy:
     def __init__(self, rate=5):
-        self.rate = rate
         self.load_parameters()
         self.init_visualizer()
-        self.lookup_transforms()
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
-        self.cam_frame = rospy.get_param("~camera/frame_id")
-        info_topic = rospy.get_param("~camera/info_topic")
-        self.linear_vel = rospy.get_param("~linear_vel")
-        self.min_z_dist = rospy.get_param("~camera/min_z_dist")
-        self.qual_threshold = rospy.get_param("~qual_threshold")
         self.task_frame = "task"
-
+        info_topic = rospy.get_param("~camera/info_topic")
         msg = rospy.wait_for_message(info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
+        self.qual_threshold = rospy.get_param("vgn/qual_threshold")
 
     def init_visualizer(self):
         self.vis = Visualizer()
 
-    def lookup_transforms(self):
-        self.T_cam_ee = tf.lookup(self.cam_frame, "panda_link8")
-
-    def activate(self, bbox):
+    def activate(self, bbox, view_sphere):
         self.vis.clear()
 
         self.bbox = bbox
+        self.view_sphere = view_sphere
         self.vis.bbox(self.base_frame, self.bbox)
-
-        self.view_sphere = ViewSphere(bbox)
 
         self.calibrate_task_frame()
 
@@ -51,6 +40,7 @@ class Policy:
 
         self.views = []
         self.best_grasp = None
+        self.x_d = None
         self.done = False
 
     def calibrate_task_frame(self):
@@ -89,26 +79,12 @@ class Policy:
     def score_fn(self, grasp):
         return grasp.quality
 
-    def is_view_feasible(self, view):
-        # Check whether MoveIt can find a trajectory to the given view
-        success, _ = self.moveit.plan(view * self.T_cam_ee)
-        return success
-
-    def compute_velocity_cmd(self, linear, angular):
-        kp = 4.0
-        linear = kp * linear
-        scale = np.linalg.norm(linear)
-        linear *= np.clip(scale, 0.0, self.linear_vel) / scale
-        return np.r_[linear, angular]
-
 
 class SingleViewPolicy(Policy):
     def update(self, img, x):
-        linear, angular = compute_error(self.x_d, x)
-
+        linear, _ = compute_error(self.x_d, x)
         if np.linalg.norm(linear) < 0.02:
             self.views.append(x)
-
             self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
             tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
             self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
@@ -119,14 +95,10 @@ class SingleViewPolicy(Policy):
 
             grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
             grasps, scores = self.sort_grasps(grasps)
-
             self.vis.grasps(self.base_frame, grasps, scores)
 
             self.best_grasp = grasps[0] if len(grasps) > 0 else None
             self.done = True
-            return np.zeros(6)
-        else:
-            return self.compute_velocity_cmd(linear, angular)
 
 
 class MultiViewPolicy(Policy):
@@ -150,21 +122,6 @@ class MultiViewPolicy(Policy):
             self.vis.best_grasp(self.base_frame, grasps[0], scores[0])
 
         self.vis.grasps(self.base_frame, grasps, scores)
-
-
-class ViewSphere:
-    # Define sphere for view generation on top of the bbox.
-    # TODO an ellipse around the bbox's center would be even nicer ;)
-
-    def __init__(self, bbox):
-        self.center = np.r_[bbox.center[:2], bbox.max[2]]
-        self.r = rospy.get_param("~camera/min_z_dist")
-        self.target = bbox.center
-
-    def get_view(self, theta, phi):
-        eye = self.center + spherical_to_cartesian(self.r, theta, phi)
-        up = np.r_[1.0, 0.0, 0.0]
-        return look_at(eye, self.target, up)
 
 
 def compute_error(x_d, x):
