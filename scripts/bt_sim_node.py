@@ -297,7 +297,7 @@ class CameraPlugin(Plugin):
     def init_publishers(self):
         topic = self.name + "/depth/camera_info"
         self.info_pub = rospy.Publisher(topic, CameraInfo, queue_size=10)
-        topic = self.name + "/depth/image_raw"
+        topic = self.name + "/depth/image_rect_raw"
         self.depth_pub = rospy.Publisher(topic, Image, queue_size=10)
 
     def update(self):

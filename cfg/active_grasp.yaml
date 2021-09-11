@@ -1,6 +1,6 @@
 bt_sim:
   gui: True
-  cam_noise: True
+  cam_noise: False
   scene: test1.yaml
 
 grasp_controller:
@@ -12,7 +12,7 @@ grasp_controller:
   camera:
     frame_id: camera_depth_optical_frame
     info_topic: /camera/depth/camera_info
-    depth_topic: /camera/depth/image_raw
+    depth_topic: /camera/depth/image_rect_raw
     min_z_dist: 0.3
     
 vgn:
