@@ -1,0 +1,12 @@
+center: [0.5, 0.05, 0.2]
+q:  [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]
+objects:
+- object_id: 004_sugar_box
+  xyz: [-0.04, -0.03, 0.0]
+  rpy: [0, 0, 30]
+- object_id: 008_pudding_box
+  xyz: [-0.02, -0.06, 0.19]
+  rpy: [0, 0, 45]
+- object_id: 010_potted_meat_can
+  xyz: [0.04, 0.03, 0.0]
+  rpy: [0, 0, 60]

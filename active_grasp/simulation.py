@@ -46,9 +46,10 @@ class Simulation:
         self.rng = np.random.default_rng(seed)
 
     def reset(self):
+        self.set_arm_configuration([0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79])
+        self.scene.reset(rng=self.rng)
         q = self.scene.sample_initial_configuration(self.rng)
         self.set_arm_configuration(q)
-        self.scene.reset(rng=self.rng)
         uid = self.select_target()
         bbox = self.get_target_bbox(uid)
         return bbox
