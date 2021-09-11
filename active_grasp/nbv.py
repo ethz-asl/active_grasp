@@ -15,8 +15,8 @@ class NextBestView(MultiViewPolicy):
         self.generate_view_candidates()
 
     def generate_view_candidates(self):
-        thetas = np.arange(1, 4) * np.deg2rad(30)
-        phis = np.arange(1, 6) * np.deg2rad(60)
+        thetas = np.deg2rad([15, 30, 45])
+        phis = np.arange(8) * np.deg2rad(45)
         self.view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
             view = self.view_sphere.get_view(theta, phi)
