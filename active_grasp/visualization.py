@@ -1,4 +1,4 @@
-from geometry_msgs.msg import PoseArray
+from geometry_msgs.msg import PoseStamped
 import matplotlib.colors
 import numpy as np
 import rospy
@@ -27,6 +27,7 @@ class Visualizer:
             latch=True,
             queue_size=1,
         )
+        self.pose_pub = rospy.Publisher("pose", PoseStamped, queue_size=1)
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
 
     def clear(self):
@@ -76,9 +77,6 @@ class Visualizer:
         self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.006))
 
     def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.8):
-        if len(grasps) == 0:
-            return
-
         markers = []
         for i, (grasp, score) in enumerate(zip(grasps, scores)):
             color = cmap((score - smin) / (smax - smin))
@@ -136,6 +134,10 @@ class Visualizer:
             "point",
         )
         self.draw([marker])
+
+    def pose(self, frame, pose):
+        msg = to_pose_stamped_msg(pose, frame)
+        self.pose_pub.publish(msg)
 
     def quality(self, frame, voxel_size, quality, threshold=0.9):
         points, values = grid_to_map_cloud(voxel_size, quality, threshold)

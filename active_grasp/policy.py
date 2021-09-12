@@ -20,6 +20,7 @@ class Policy:
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
+        self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
         self.cam_frame = rospy.get_param("~camera/frame_id")
         self.task_frame = "task"
         info_topic = rospy.get_param("~camera/info_topic")
@@ -29,6 +30,7 @@ class Policy:
 
     def init_robot_model(self):
         self.model = KDLModel.from_parameter_server(self.base_frame, self.cam_frame)
+        self.ee_model = KDLModel.from_parameter_server(self.base_frame, "panda_link8")
 
     def init_visualizer(self):
         self.vis = Visualizer()
@@ -65,7 +67,7 @@ class Policy:
     def update(self, img, x, q):
         raise NotImplementedError
 
-    def sort_grasps(self, in_grasps):
+    def sort_grasps(self, in_grasps, q):
         # Transforms grasps into base frame, checks whether they lie on the target, and sorts by their score
         grasps, scores = [], []
 
@@ -80,15 +82,17 @@ class Policy:
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
-                grasps.append(grasp)
-                scores.append(self.score_fn(grasp))
+                q_grasp = self.ee_model.ik(q, pose * self.T_grasp_ee)
+                if q_grasp is not None:
+                    grasps.append(grasp)
+                    scores.append(self.score_fn(grasp, q, q_grasp))
 
         grasps, scores = np.asarray(grasps), np.asarray(scores)
         indices = np.argsort(-scores)
         return grasps[indices], scores[indices]
 
-    def score_fn(self, grasp):
-        return grasp.quality
+    def score_fn(self, grasp, q, q_grasp):
+        return -np.linalg.norm(q - q_grasp)
 
 
 class SingleViewPolicy(Policy):
@@ -105,10 +109,14 @@ class SingleViewPolicy(Policy):
             self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
 
             grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
-            grasps, scores = self.sort_grasps(grasps)
-            self.vis.grasps(self.base_frame, grasps, scores)
+            grasps, scores = self.sort_grasps(grasps, q)
 
-            self.best_grasp = grasps[0] if len(grasps) > 0 else None
+            if len(grasps) > 0:
+                smin, smax = np.min(scores), np.max(scores)
+                self.best_grasp = grasps[0]
+                self.vis.grasps(self.base_frame, grasps, scores, smin, smax)
+                self.vis.best_grasp(self.base_frame, grasps[0], scores[0], smin, smax)
+
             self.done = True
 
 
@@ -118,7 +126,7 @@ class MultiViewPolicy(Policy):
         self.T = 10  # Window size of grasp prediction history
         self.qual_hist = np.zeros((self.T,) + (40,) * 3, np.float32)
 
-    def integrate(self, img, x):
+    def integrate(self, img, x, q):
         self.views.append(x)
         self.vis.path(self.base_frame, self.views)
 
@@ -137,12 +145,13 @@ class MultiViewPolicy(Policy):
 
         with Timer("grasp_selection"):
             grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
-            grasps, scores = self.sort_grasps(grasps)
-        self.vis.grasps(self.base_frame, grasps, scores)
+            grasps, scores = self.sort_grasps(grasps, q)
 
         if len(grasps) > 0:
+            smin, smax = np.min(scores), np.max(scores)
             self.best_grasp = grasps[0]
-            self.vis.best_grasp(self.base_frame, grasps[0], scores[0])
+            self.vis.grasps(self.base_frame, grasps, scores, smin, smax)
+            self.vis.best_grasp(self.base_frame, grasps[0], scores[0], smin, smax)
 
 
 def compute_error(x_d, x):

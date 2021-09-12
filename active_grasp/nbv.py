@@ -56,7 +56,7 @@ class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
-        self.max_views = 40
+        self.max_views = 100
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
@@ -78,7 +78,7 @@ class NextBestView(MultiViewPolicy):
             self.done = True
         else:
             with Timer("state_update"):
-                self.integrate(img, x)
+                self.integrate(img, x, q)
             views = self.view_candidates
             with Timer("ig_computation"):
                 gains = [self.ig_fn(v) for v in views]
