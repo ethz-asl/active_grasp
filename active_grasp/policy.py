@@ -115,7 +115,7 @@ class SingleViewPolicy(Policy):
 class MultiViewPolicy(Policy):
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
-        self.T = 5  # Window size of grasp prediction history
+        self.T = 10  # Window size of grasp prediction history
         self.qual_hist = np.zeros((self.T,) + (40,) * 3, np.float32)
 
     def integrate(self, img, x):

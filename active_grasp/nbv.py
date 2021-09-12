@@ -9,6 +9,7 @@ from .policy import MultiViewPolicy
 class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
+        self.min_z_dist = rospy.get_param("~camera/min_z_dist")
         self.max_views = 40
 
     def activate(self, bbox, view_sphere):
@@ -57,11 +58,15 @@ class NextBestView(MultiViewPolicy):
         return False
 
     def ig_fn(self, view, downsample=20):
+        tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+        tsdf_grid = -1.0 + 2.0 * tsdf_grid  # Open3D maps tsdf to [0,1]
+
         fx = self.intrinsic.fx / downsample
         fy = self.intrinsic.fy / downsample
         cx = self.intrinsic.cx / downsample
         cy = self.intrinsic.cy / downsample
 
+        # Project bbox onto the image plane to get better bounds
         T_cam_base = view.inv()
         corners = np.array([T_cam_base.apply(p) for p in self.bbox.corners]).T
         u = (fx * corners[0] / corners[2] + cx).round().astype(int)
@@ -69,47 +74,41 @@ class NextBestView(MultiViewPolicy):
         u_min, u_max = u.min(), u.max()
         v_min, v_max = v.min(), v.max()
 
-        t_min = 0.1
+        t_min = self.min_z_dist
         t_max = corners[2].max()  # TODO This bound might be a bit too short
-        t_step = 0.01
+        t_step = np.sqrt(3) * voxel_size  # TODO replace with line rasterization
 
         view = self.T_task_base * view  # We'll work in the task frame from now on
-
-        tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+        origin = view.translation
 
         def get_voxel_at(p):
             index = (p / voxel_size).astype(int)
             return index if (index >= 0).all() and (index < 40).all() else None
 
         voxel_indices = []
-
         for u in range(u_min, u_max):
             for v in range(v_min, v_max):
-                origin = view.translation
                 direction = np.r_[(u - cx) / fx, (v - cy) / fy, 1.0]
                 direction = view.rotation.apply(direction / np.linalg.norm(direction))
                 # self.vis.rays(self.task_frame, origin, [direction])
-                # rospy.sleep(0.01)
                 t, tsdf_prev = t_min, -1.0
                 while t < t_max:
                     p = origin + t * direction
                     t += t_step
                     # self.vis.point(self.task_frame, p)
-                    # rospy.sleep(0.01)
                     index = get_voxel_at(p)
                     if index is not None:
                         i, j, k = index
-                        tsdf = -1 + 2 * tsdf_grid[i, j, k]  # Open3D maps tsdf to [0,1]
+                        tsdf = tsdf_grid[i, j, k]
                         if tsdf * tsdf_prev < 0 and tsdf_prev > -1:  # Crossed a surface
                             break
-                        # TODO check whether the voxel lies within the bounding box ?
                         voxel_indices.append(index)
                         tsdf_prev = tsdf
 
         # Count rear side voxels
         i, j, k = np.unique(voxel_indices, axis=0).T
         tsdfs = tsdf_grid[i, j, k]
-        ig = np.logical_and(tsdfs > 0.0, tsdfs < 0.5).sum()
+        ig = np.logical_and(tsdfs > -1.0, tsdfs < 0.0).sum()
 
         return ig
 
