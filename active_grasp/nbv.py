@@ -1,6 +1,7 @@
 import itertools
 import numpy as np
 import rospy
+from .timer import Timer
 
 from .policy import MultiViewPolicy
 
@@ -12,7 +13,9 @@ class NextBestView(MultiViewPolicy):
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
-        self.generate_view_candidates()
+        with Timer("view_generation"):
+            self.generate_view_candidates()
+        self.info["view_candidates_count"] = len(self.view_candidates)
 
     def generate_view_candidates(self):
         thetas = np.deg2rad([15, 30, 45])
@@ -27,10 +30,13 @@ class NextBestView(MultiViewPolicy):
         if len(self.views) > self.max_views or self.best_grasp_prediction_is_stable():
             self.done = True
         else:
-            self.integrate(img, x)
+            with Timer("state_update"):
+                self.integrate(img, x)
             views = self.view_candidates
-            gains = [self.ig_fn(v) for v in views]
-            costs = [self.cost_fn(v) for v in views]
+            with Timer("ig_computation"):
+                gains = [self.ig_fn(v) for v in views]
+            with Timer("cost_computation"):
+                costs = [self.cost_fn(v) for v in views]
             utilities = gains / np.sum(gains) - costs / np.sum(costs)
             self.vis.views(self.base_frame, self.intrinsic, views, utilities)
             i = np.argmax(utilities)

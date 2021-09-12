@@ -3,6 +3,7 @@ from sensor_msgs.msg import CameraInfo
 from pathlib import Path
 import rospy
 
+from .timer import Timer
 from .visualization import Visualizer
 from robot_helpers.model import KDLModel
 from robot_helpers.ros import tf
@@ -52,6 +53,7 @@ class Policy:
         self.best_grasp = None
         self.x_d = None
         self.done = False
+        self.info = {}
 
     def calibrate_task_frame(self):
         self.T_base_task = Transform.translation(self.bbox.center - np.full(3, 0.15))
@@ -118,27 +120,29 @@ class MultiViewPolicy(Policy):
 
     def integrate(self, img, x):
         self.views.append(x)
-        self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
-
-        self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
-        self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
         self.vis.path(self.base_frame, self.views)
 
-        tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
-        out = self.vgn.predict(tsdf_grid)
+        with Timer("tsdf_integration"):
+            self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
+        self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
+        self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
+
+        with Timer("grasp_prediction"):
+            tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
+            out = self.vgn.predict(tsdf_grid)
         self.vis.quality(self.task_frame, self.tsdf.voxel_size, out.qual, 0.5)
 
         t = (len(self.views) - 1) % self.T
         self.qual_hist[t, ...] = out.qual
 
-        grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
-        grasps, scores = self.sort_grasps(grasps)
+        with Timer("grasp_selection"):
+            grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
+            grasps, scores = self.sort_grasps(grasps)
+        self.vis.grasps(self.base_frame, grasps, scores)
 
         if len(grasps) > 0:
             self.best_grasp = grasps[0]
             self.vis.best_grasp(self.base_frame, grasps[0], scores[0])
-
-        self.vis.grasps(self.base_frame, grasps, scores)
 
 
 def compute_error(x_d, x):

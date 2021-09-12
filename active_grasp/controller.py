@@ -155,6 +155,7 @@ class GraspController:
             "view_count": len(points),
             "distance": d,
         }
+        info.update(self.policy.info)
         info.update(Timer.timers)
         return info
 
