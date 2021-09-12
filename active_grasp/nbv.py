@@ -73,7 +73,7 @@ class NextBestView(MultiViewPolicy):
             if self.is_feasible(view):
                 self.view_candidates.append(view)
 
-    def update(self, img, x):
+    def update(self, img, x, q):
         if len(self.views) > self.max_views or self.best_grasp_prediction_is_stable():
             self.done = True
         else:

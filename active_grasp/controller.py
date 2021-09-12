@@ -11,7 +11,7 @@ from .timer import Timer
 from active_grasp.srv import Reset, ResetRequest
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
-from robot_helpers.ros.panda import PandaGripperClient
+from robot_helpers.ros.panda import PandaArmClient, PandaGripperClient
 from robot_helpers.ros.moveit import MoveItClient
 from robot_helpers.spatial import Rotation, Transform
 from vgn.utils import look_at, cartesian_to_spherical, spherical_to_cartesian
@@ -43,8 +43,9 @@ class GraspController:
         )
 
     def init_robot_connection(self):
-        self.cartesian_vel_pub = rospy.Publisher("command", Twist, queue_size=10)
+        self.arm = PandaArmClient()
         self.gripper = PandaGripperClient()
+        self.cartesian_vel_pub = rospy.Publisher("command", Twist, queue_size=10)
 
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
@@ -95,18 +96,19 @@ class GraspController:
         timer = rospy.Timer(rospy.Duration(1.0 / self.control_rate), self.send_vel_cmd)
         r = rospy.Rate(self.policy_rate)
         while not self.policy.done:
-            img, pose = self.get_state()
-            self.policy.update(img, pose)
+            img, pose, q = self.get_state()
+            self.policy.update(img, pose, q)
             r.sleep()
         rospy.sleep(0.1)  # Wait for a zero command to be sent to the robot.
         timer.shutdown()
         return self.policy.best_grasp
 
     def get_state(self):
+        q, _ = self.arm.get_state()
         msg = copy.deepcopy(self.latest_depth_msg)
         img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
         pose = tf.lookup(self.base_frame, self.cam_frame, msg.header.stamp)
-        return img, pose
+        return img, pose, q
 
     def send_vel_cmd(self, event):
         if self.policy.x_d is None or self.policy.done:

@@ -62,7 +62,7 @@ class Policy:
         rospy.sleep(0.5)  # Wait for tf tree to be updated
         self.vis.workspace(self.task_frame, 0.3)
 
-    def update(self, img, pose):
+    def update(self, img, x, q):
         raise NotImplementedError
 
     def sort_grasps(self, in_grasps):
@@ -92,7 +92,7 @@ class Policy:
 
 
 class SingleViewPolicy(Policy):
-    def update(self, img, x):
+    def update(self, img, x, q):
         linear, _ = compute_error(self.x_d, x)
         if np.linalg.norm(linear) < 0.02:
             self.views.append(x)
