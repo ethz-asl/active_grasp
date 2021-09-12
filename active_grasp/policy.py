@@ -152,6 +152,9 @@ class MultiViewPolicy(Policy):
             self.best_grasp = grasps[0]
             self.vis.grasps(self.base_frame, grasps, scores, smin, smax)
             self.vis.best_grasp(self.base_frame, grasps[0], scores[0], smin, smax)
+        else:
+            self.best_grasp = None
+            # TODO clear grasp markers
 
 
 def compute_error(x_d, x):
