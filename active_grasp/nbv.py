@@ -14,6 +14,7 @@ def get_voxel_at(voxel_size, p):
     return index if (index >= 0).all() and (index < 40).all() else None
 
 
+# Note that the jit compilation takes some time the first time raycast is called
 @jit(nopython=True)
 def raycast(
     voxel_size,
@@ -56,7 +57,7 @@ class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
-        self.max_views = 100
+        self.max_views = 80
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)

@@ -74,12 +74,12 @@ class Policy:
         for grasp in in_grasps:
             pose = self.T_base_task * grasp.pose
             R, t = pose.rotation, pose.translation
+            tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
 
             # Filter out artifacts close to the support
-            if t[2] < self.bbox.min[2] + 0.04:
+            if t[2] < self.bbox.min[2] + 0.05 or tip[2] < self.bbox.min[2] + 0.02:
                 continue
 
-            tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
                 q_grasp = self.ee_model.ik(q, pose * self.T_grasp_ee)
