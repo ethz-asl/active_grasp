@@ -30,6 +30,8 @@ class Visualizer:
         self.pose_pub = rospy.Publisher("pose", PoseStamped, queue_size=1)
         self.quality_pub = rospy.Publisher("quality", PointCloud2, queue_size=1)
 
+        self.grasp_marker_count = 0
+
     def clear(self):
         self.clear_markers()
         msg = to_cloud_msg("panda_link0", np.array([]))
@@ -40,10 +42,6 @@ class Visualizer:
 
     def clear_markers(self):
         self.draw([Marker(action=Marker.DELETEALL)])
-
-    def clear_views(self, n):
-        markers = [Marker(action=Marker.DELETE, ns="views", id=i) for i in range(n)]
-        self.draw(markers)
 
     def draw(self, markers):
         self.marker_pub.publish(MarkerArray(markers=markers))
@@ -82,7 +80,20 @@ class Visualizer:
             color = cmap((score - smin) / (smax - smin))
             color = [color[0], color[1], color[2], alpha]
             markers += create_grasp_markers(frame, grasp, color, "grasps", 4 * i)
+        self.grasp_marker_count = len(markers)
         self.draw(markers)
+
+    def clear_grasps(self):
+        if self.grasp_marker_count > 0:
+            markers = [
+                Marker(action=Marker.DELETE, ns="grasps", id=i)
+                for i in range(self.grasp_marker_count)
+            ]
+            markers += [
+                Marker(action=Marker.DELETE, ns="best_grasp", id=i) for i in range(4)
+            ]
+            self.draw(markers)
+            self.grasp_marker_count = 0
 
     def rays(self, frame, origin, directions, t_max=1.0):
         lines = [[origin, origin + t_max * direction] for direction in directions]

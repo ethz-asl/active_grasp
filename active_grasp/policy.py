@@ -147,6 +147,8 @@ class MultiViewPolicy(Policy):
             grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
             grasps, scores = self.sort_grasps(grasps, q)
 
+        self.vis.clear_grasps()
+
         if len(grasps) > 0:
             smin, smax = np.min(scores), np.max(scores)
             self.best_grasp = grasps[0]
@@ -154,7 +156,6 @@ class MultiViewPolicy(Policy):
             self.vis.best_grasp(self.base_frame, grasps[0], scores[0], smin, smax)
         else:
             self.best_grasp = None
-            # TODO clear grasp markers
 
 
 def compute_error(x_d, x):

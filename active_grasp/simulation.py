@@ -126,7 +126,7 @@ def find_urdfs(root):
 class RandomScene(Scene):
     def __init__(self):
         super().__init__()
-        self.center = np.r_[0.6, 0.0, 0.1]
+        self.center = np.r_[0.5, 0.0, 0.1]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
         self.object_urdfs = find_urdfs(self.vgn_urdfs_dir / "packed" / "test")
