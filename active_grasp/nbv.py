@@ -1,9 +1,55 @@
 import itertools
+from numba import jit
 import numpy as np
 import rospy
-from .timer import Timer
 
 from .policy import MultiViewPolicy
+
+from .timer import Timer
+
+
+@jit(nopython=True)
+def get_voxel_at(voxel_size, p):
+    index = (p / voxel_size).astype(np.int64)
+    return index if (index >= 0).all() and (index < 40).all() else None
+
+
+@jit(nopython=True)
+def raycast(
+    voxel_size,
+    tsdf_grid,
+    ori,
+    pos,
+    fx,
+    fy,
+    cx,
+    cy,
+    u_min,
+    u_max,
+    v_min,
+    v_max,
+    t_min,
+    t_max,
+    t_step,
+):
+    voxel_indices = []
+    for u in range(u_min, u_max):
+        for v in range(v_min, v_max):
+            direction = np.asarray([(u - cx) / fx, (v - cy) / fy, 1.0])
+            direction = ori @ (direction / np.linalg.norm(direction))
+            t, tsdf_prev = t_min, -1.0
+            while t < t_max:
+                p = pos + t * direction
+                t += t_step
+                index = get_voxel_at(voxel_size, p)
+                if index is not None:
+                    i, j, k = index
+                    tsdf = tsdf_grid[i, j, k]
+                    if tsdf * tsdf_prev < 0 and tsdf_prev > -1:  # crossed a surface
+                        break
+                    voxel_indices.append(index)
+                    tsdf_prev = tsdf
+    return voxel_indices
 
 
 class NextBestView(MultiViewPolicy):
@@ -61,6 +107,7 @@ class NextBestView(MultiViewPolicy):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         tsdf_grid = -1.0 + 2.0 * tsdf_grid  # Open3D maps tsdf to [0,1]
 
+        # Downsample the sensor resolution
         fx = self.intrinsic.fx / downsample
         fy = self.intrinsic.fy / downsample
         cx = self.intrinsic.cx / downsample
@@ -78,32 +125,27 @@ class NextBestView(MultiViewPolicy):
         t_max = corners[2].max()  # TODO This bound might be a bit too short
         t_step = np.sqrt(3) * voxel_size  # TODO replace with line rasterization
 
-        view = self.T_task_base * view  # We'll work in the task frame from now on
-        origin = view.translation
+        # Cast rays from the camera view (we'll work in the task frame from now on)
+        view = self.T_task_base * view
+        ori, pos = view.rotation.as_matrix(), view.translation
 
-        def get_voxel_at(p):
-            index = (p / voxel_size).astype(int)
-            return index if (index >= 0).all() and (index < 40).all() else None
-
-        voxel_indices = []
-        for u in range(u_min, u_max):
-            for v in range(v_min, v_max):
-                direction = np.r_[(u - cx) / fx, (v - cy) / fy, 1.0]
-                direction = view.rotation.apply(direction / np.linalg.norm(direction))
-                # self.vis.rays(self.task_frame, origin, [direction])
-                t, tsdf_prev = t_min, -1.0
-                while t < t_max:
-                    p = origin + t * direction
-                    t += t_step
-                    # self.vis.point(self.task_frame, p)
-                    index = get_voxel_at(p)
-                    if index is not None:
-                        i, j, k = index
-                        tsdf = tsdf_grid[i, j, k]
-                        if tsdf * tsdf_prev < 0 and tsdf_prev > -1:  # Crossed a surface
-                            break
-                        voxel_indices.append(index)
-                        tsdf_prev = tsdf
+        voxel_indices = raycast(
+            voxel_size,
+            tsdf_grid,
+            ori,
+            pos,
+            fx,
+            fy,
+            cx,
+            cy,
+            u_min,
+            u_max,
+            v_min,
+            v_max,
+            t_min,
+            t_max,
+            t_step,
+        )
 
         # Count rear side voxels
         i, j, k = np.unique(voxel_indices, axis=0).T
