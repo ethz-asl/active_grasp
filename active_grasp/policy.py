@@ -61,7 +61,7 @@ class Policy:
         self.T_base_task = Transform.translation(self.bbox.center - np.full(3, 0.15))
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
-        rospy.sleep(0.5)  # Wait for tf tree to be updated
+        rospy.sleep(1.0)  # Wait for tf tree to be updated
         self.vis.workspace(self.task_frame, 0.3)
 
     def update(self, img, x, q):

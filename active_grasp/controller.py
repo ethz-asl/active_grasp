@@ -86,6 +86,7 @@ class GraspController:
         return self.collect_info(res)
 
     def reset(self):
+        Timer.reset()
         res = self.reset_env(ResetRequest())
         rospy.sleep(1.0)  # Wait for the TF tree to be updated.
         return from_bbox_msg(res.bbox)
