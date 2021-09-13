@@ -88,7 +88,7 @@ class Scene:
         self.object_uids = []
 
     def load_support(self, pos):
-        self.support_uid = p.loadURDF(str(self.support_urdf), pos, globalScaling=0.2)
+        self.support_uid = p.loadURDF(str(self.support_urdf), pos, globalScaling=0.3)
 
     def remove_support(self):
         p.removeBody(self.support_uid)

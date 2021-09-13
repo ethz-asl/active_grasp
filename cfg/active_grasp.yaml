@@ -1,11 +1,11 @@
 bt_sim:
-  gui: True
-  cam_noise: False
+  gui: False
+  cam_noise: True
   scene: test1.yaml
 
 grasp_controller:
   base_frame_id: panda_link0
-  ee_grasp_offset: [0.0, 0.0, -0.383, 0.924, 0.0, 0.0, 0.065]  # offset to the moveit ee
+  ee_grasp_offset: [0.0, 0.0, -0.383, 0.924, 0.0, 0.0, 0.065]  # offset to panda_link8
   control_rate: 30
   linear_vel: 0.05
   policy_rate: 5

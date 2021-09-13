@@ -73,11 +73,10 @@ class Visualizer:
         color = cmap((grasp.quality - qmin) / (qmax - qmin))
         self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.006))
 
-    def grasps(self, frame, grasps, qmin=0.5, qmax=1.0, alpha=0.8):
+    def grasps(self, frame, grasps, qmin=0.5, qmax=1.0):
         markers = []
         for i, grasp in enumerate(grasps):
             color = cmap((grasp.quality - qmin) / (qmax - qmin))
-            color = [color[0], color[1], color[2], alpha]
             markers += create_grasp_markers(frame, grasp, color, "grasps", 4 * i)
         self.grasp_marker_count = len(markers)
         self.draw(markers)
@@ -99,8 +98,8 @@ class Visualizer:
         marker = create_line_list_marker(
             frame,
             Transform.identity(),
-            [0.002, 0.0, 0.0],
-            [0.6, 0.6, 0.6],
+            [0.001, 0.0, 0.0],
+            [0.9, 0.9, 0.9],
             lines,
             "rays",
         )
@@ -124,16 +123,19 @@ class Visualizer:
             "path",
             0,
         )
-        lines = create_line_strip_marker(
-            frame,
-            Transform.identity(),
-            [0.005, 0.0, 0.0],
-            color,
-            points,
-            "path",
-            1,
-        )
-        self.draw([spheres, lines])
+        markers = [spheres]
+        if len(poses) > 1:
+            lines = create_line_strip_marker(
+                frame,
+                Transform.identity(),
+                [0.005, 0.0, 0.0],
+                color,
+                points,
+                "path",
+                1,
+            )
+            markers.append(lines)
+        self.draw(markers)
 
     def point(self, frame, point):
         marker = create_sphere_marker(
@@ -151,7 +153,6 @@ class Visualizer:
 
     def quality(self, frame, voxel_size, quality, threshold=0.9):
         points, values = grid_to_map_cloud(voxel_size, quality, threshold)
-        values = (values - 0.9) / (1.0 - 0.9)  # to increase contrast
         msg = to_cloud_msg(frame, points, intensities=values)
         self.quality_pub.publish(msg)
 
@@ -159,14 +160,13 @@ class Visualizer:
         msg = to_cloud_msg(frame, np.asarray(cloud.points))
         self.scene_cloud_pub.publish(msg)
 
-    def views(self, frame, intrinsic, views, values, alpha=0.8):
+    def views(self, frame, intrinsic, views, values):
         vmin, vmax = min(values), max(values)
         scale = [0.002, 0.0, 0.0]
         near, far = 0.0, 0.02
         markers = []
         for i, (view, value) in enumerate(zip(views, values)):
             color = cmap((value - vmin) / (vmax - vmin))
-            color = [color[0], color[1], color[2], alpha]
             marker = create_cam_view_marker(
                 frame,
                 view,
