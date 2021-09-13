@@ -57,7 +57,8 @@ class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
-        self.max_views = 80
+        self.max_views = 50
+        self.min_gain = 0.0
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
@@ -88,7 +89,11 @@ class NextBestView(MultiViewPolicy):
             utilities = gains / np.sum(gains) - costs / np.sum(costs)
             self.vis.views(self.base_frame, self.intrinsic, views, utilities)
             i = np.argmax(utilities)
-            nbv, _ = views[i], gains[i]
+            nbv, gain = views[i], gains[i]
+
+            if gain < self.min_gain:
+                self.done = True
+
             self.x_d = nbv
 
     def best_grasp_prediction_is_stable(self):

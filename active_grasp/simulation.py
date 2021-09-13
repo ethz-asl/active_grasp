@@ -133,7 +133,7 @@ class RandomScene(Scene):
 
     def load(self, rng, attempts=10):
         self.load_support(self.center)
-        urdfs, scale = rng.choice(self.object_urdfs, 5), 0.8
+        urdfs, scale = rng.choice(self.object_urdfs, 4), 0.8
         for urdf in urdfs:
             uid = self.load_object(urdf, Rotation.identity(), np.zeros(3), scale)
             lower, upper = p.getAABB(uid)
