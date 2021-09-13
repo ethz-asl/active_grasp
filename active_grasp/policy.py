@@ -138,7 +138,7 @@ class MultiViewPolicy(Policy):
         with Timer("grasp_prediction"):
             tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
             out = self.vgn.predict(tsdf_grid)
-        self.vis.quality(self.task_frame, self.tsdf.voxel_size, out.qual, 0.5)
+        self.vis.quality(self.task_frame, self.tsdf.voxel_size, out.qual, 0.8)
 
         t = (len(self.views) - 1) % self.T
         self.qual_hist[t, ...] = out.qual
@@ -150,10 +150,9 @@ class MultiViewPolicy(Policy):
         self.vis.clear_grasps()
 
         if len(grasps) > 0:
-            smin, smax = np.min(scores), np.max(scores)
             self.best_grasp = grasps[0]
-            self.vis.grasps(self.base_frame, grasps, scores, smin, smax)
-            self.vis.best_grasp(self.base_frame, grasps[0], scores[0], smin, smax)
+            self.vis.grasps(self.base_frame, grasps)
+            self.vis.best_grasp(self.base_frame, self.best_grasp)
         else:
             self.best_grasp = None
 

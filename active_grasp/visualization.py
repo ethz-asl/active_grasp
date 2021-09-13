@@ -69,15 +69,14 @@ class Visualizer:
         marker = create_line_list_marker(frame, pose, scale, color, lines, ns="bbox")
         self.draw([marker])
 
-    def best_grasp(self, frame, grasp, score, smin=0.9, smax=1.0, alpha=1.0):
-        color = cmap((score - smin) / (smax - smin))
-        color = [color[0], color[1], color[2], alpha]
+    def best_grasp(self, frame, grasp, qmin=0.5, qmax=1.0):
+        color = cmap((grasp.quality - qmin) / (qmax - qmin))
         self.draw(create_grasp_markers(frame, grasp, color, "best_grasp", radius=0.006))
 
-    def grasps(self, frame, grasps, scores, smin=0.9, smax=1.0, alpha=0.8):
+    def grasps(self, frame, grasps, qmin=0.5, qmax=1.0, alpha=0.8):
         markers = []
-        for i, (grasp, score) in enumerate(zip(grasps, scores)):
-            color = cmap((score - smin) / (smax - smin))
+        for i, grasp in enumerate(grasps):
+            color = cmap((grasp.quality - qmin) / (qmax - qmin))
             color = [color[0], color[1], color[2], alpha]
             markers += create_grasp_markers(frame, grasp, color, "grasps", 4 * i)
         self.grasp_marker_count = len(markers)
