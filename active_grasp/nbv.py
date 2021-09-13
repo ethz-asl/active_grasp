@@ -83,7 +83,7 @@ class NextBestView(MultiViewPolicy):
                 self.integrate(img, x, q)
             views = self.view_candidates
             with Timer("ig_computation"):
-                gains = [self.ig_fn(v) for v in views]
+                gains = [self.ig_fn(v, 10) for v in views]
             with Timer("cost_computation"):
                 costs = [self.cost_fn(v) for v in views]
             utilities = gains / np.sum(gains) - costs / np.sum(costs)
@@ -109,7 +109,7 @@ class NextBestView(MultiViewPolicy):
                 return True
         return False
 
-    def ig_fn(self, view, downsample=20):
+    def ig_fn(self, view, downsample):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         tsdf_grid = -1.0 + 2.0 * tsdf_grid  # Open3D maps tsdf to [0,1]
 
