@@ -109,13 +109,12 @@ class SingleViewPolicy(Policy):
             self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
 
             grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
-            grasps, scores = self.sort_grasps(grasps, q)
+            grasps, _ = self.sort_grasps(grasps, q)
 
             if len(grasps) > 0:
-                smin, smax = np.min(scores), np.max(scores)
                 self.best_grasp = grasps[0]
-                self.vis.grasps(self.base_frame, grasps, scores, smin, smax)
-                self.vis.best_grasp(self.base_frame, grasps[0], scores[0], smin, smax)
+                self.vis.grasps(self.base_frame, grasps)
+                self.vis.best_grasp(self.base_frame, self.best_grasp)
 
             self.done = True
 
