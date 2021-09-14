@@ -8,5 +8,6 @@ objects:
   xyz: [-0.02, -0.06, 0.19]
   rpy: [0, 0, 45]
 - object_id: 010_potted_meat_can
-  xyz: [0.04, 0.03, 0.0]
+  xyz: [0.04, 0.06, 0.0]
   rpy: [0, 0, 60]
+  scale: 0.9
