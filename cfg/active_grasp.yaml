@@ -1,7 +1,7 @@
 bt_sim:
   gui: False
   cam_noise: True
-  scene: test1.yaml
+  scene: kitchen.yaml
 
 grasp_controller:
   base_frame_id: panda_link0
