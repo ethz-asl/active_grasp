@@ -12,6 +12,9 @@ from robot_helpers.spatial import Rotation
 
 rospack = rospkg.RosPack()
 
+active_grasp_urdfs_dir = Path(rospack.get_path("active_grasp")) / "assets" / "urdfs"
+urdf_zoo_dir = Path(rospack.get_path("urdf_zoo")) / "models"
+
 
 class Simulation:
     """Robot is placed s.t. world and base frames are the same"""
@@ -35,8 +38,7 @@ class Simulation:
         p.resetDebugVisualizerCamera(1.2, 30, -30, [0.4, 0.0, 0.2])
 
     def load_robot(self):
-        path = Path(rospack.get_path("active_grasp"))
-        panda_urdf_path = path / "assets/urdfs/franka/panda_arm_hand.urdf"
+        panda_urdf_path = active_grasp_urdfs_dir / "franka/panda_arm_hand.urdf"
         self.arm = BtPandaArm(panda_urdf_path)
         self.gripper = BtPandaGripper(self.arm)
         self.model = KDLModel.from_urdf_file(
@@ -81,9 +83,8 @@ class Simulation:
 
 class Scene:
     def __init__(self):
-        self.vgn_urdfs_dir = Path(rospack.get_path("vgn")) / "assets/urdfs"
-        self.ycb_urdfs_dir = Path(rospack.get_path("urdf_zoo")) / "models/ycb"
-        self.support_urdf = self.vgn_urdfs_dir / "setup/plane.urdf"
+        self.support_urdf = urdf_zoo_dir / "plane" / "model.urdf"
+        self.ycb_urdfs_dir = urdf_zoo_dir / "ycb"
         self.support_uid = -1
         self.object_uids = []
 
@@ -126,14 +127,15 @@ def find_urdfs(root):
 class RandomScene(Scene):
     def __init__(self):
         super().__init__()
-        self.center = np.r_[0.5, 0.0, 0.1]
+        self.center = np.r_[0.5, 0.0, 0.2]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
-        self.object_urdfs = find_urdfs(self.vgn_urdfs_dir / "packed" / "test")
+        self.object_urdfs = find_urdfs(active_grasp_urdfs_dir / "packed")
 
     def load(self, rng, attempts=10):
         self.load_support(self.center)
-        urdfs, scale = rng.choice(self.object_urdfs, 4), 0.8
+        urdfs = rng.choice(self.object_urdfs, 4)
+        scale = 1.0
         for urdf in urdfs:
             uid = self.load_object(urdf, Rotation.identity(), np.zeros(3), scale)
             lower, upper = p.getAABB(uid)
@@ -154,8 +156,7 @@ class RandomScene(Scene):
                 self.remove_object(uid)
 
     def sample_initial_configuration(self, rng):
-        # q = [0.0, -0.79, 0.0, -2.36, 0.0, 1.57, 0.79]
-        q = [0.0, -0.96, 0.0, -2.09, 0.0, 1.66, 0.79]
+        q = [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]
         q += rng.uniform(-0.08, 0.08, 7)
         return q
 
