@@ -120,15 +120,21 @@ class GraspController:
         self.cartesian_vel_pub.publish(to_twist_msg(cmd))
 
     def compute_velocity_cmd(self, x_d, x):
-        # TODO verify that the frames are handled correctly
-        r, theta, phi = cartesian_to_spherical(x.translation - self.view_sphere.center)
+        # Velocity cmd towards the target
         e_t = x_d.translation - x.translation
+
+        # Velocity cmd towards the surface of the sphere
+        r, theta, phi = cartesian_to_spherical(x.translation - self.view_sphere.center)
         e_n = (self.view_sphere.center - x.translation) * (r - self.view_sphere.r) / r
-        linear = 1.0 * e_t + 10.0 * e_n
+
+        # Final cmd is a linear combination of both components
+        linear = 1.0 * e_t + 6.0 * e_n
         scale = np.linalg.norm(linear)
         linear *= np.clip(scale, 0.0, self.linear_vel) / scale
+
         angular = self.view_sphere.get_view(theta, phi).rotation * x.rotation.inv()
         angular = 0.5 * angular.as_rotvec()
+
         return np.r_[linear, angular]
 
     def execute_grasp(self, grasp):
