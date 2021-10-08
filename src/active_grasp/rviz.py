@@ -3,10 +3,11 @@ import numpy as np
 from robot_helpers.ros.rviz import *
 from robot_helpers.spatial import Transform
 import vgn.rviz
+from vgn.utils import box_lines
 
 cm = lambda s: tuple([float(1 - s), float(s), float(0)])
-red = np.r_[1.0, 0.0, 0.0]
-blue = np.r_[0, 0.6, 1.0]
+red = [1.0, 0.0, 0.0]
+blue = [0, 0.6, 1.0]
 
 
 class Visualizer(vgn.rviz.Visualizer):
@@ -14,22 +15,7 @@ class Visualizer(vgn.rviz.Visualizer):
         pose = Transform.identity()
         scale = [0.004, 0.0, 0.0]
         color = red
-        corners = bbox.corners
-        edges = [
-            (0, 1),
-            (1, 3),
-            (3, 2),
-            (2, 0),
-            (4, 5),
-            (5, 7),
-            (7, 6),
-            (6, 4),
-            (0, 4),
-            (1, 5),
-            (3, 7),
-            (2, 6),
-        ]
-        lines = [(corners[s], corners[e]) for s, e in edges]
+        lines = box_lines(bbox.min, bbox.max)
         marker = create_line_list_marker(frame, pose, scale, color, lines, "bbox")
         self.draw([marker])
 
@@ -88,7 +74,7 @@ class Visualizer(vgn.rviz.Visualizer):
         markers = []
         for i, (view, value) in enumerate(zip(views, values)):
             color = cm((value - vmin) / (vmax - vmin))
-            marker = create_cam_view_marker(
+            marker = create_view_marker(
                 frame,
                 view,
                 scale,
@@ -103,9 +89,7 @@ class Visualizer(vgn.rviz.Visualizer):
         self.draw(markers)
 
 
-def create_cam_view_marker(
-    frame, pose, scale, color, intrinsic, near, far, ns="", id=0
-):
+def create_view_marker(frame, pose, scale, color, intrinsic, near, far, ns="", id=0):
     marker = create_marker(Marker.LINE_LIST, frame, pose, scale, color, ns, id)
     x_n = near * intrinsic.width / (2.0 * intrinsic.fx)
     y_n = near * intrinsic.height / (2.0 * intrinsic.fy)

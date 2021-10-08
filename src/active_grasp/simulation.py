@@ -170,7 +170,7 @@ class CustomScene(Scene):
 
     def load_config(self):
         with self.config_path.open("r") as f:
-            self.scene = yaml.load(f)
+            self.scene = yaml.load(f, Loader=yaml.FullLoader)
         self.center = np.asarray(self.scene["center"])
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]

@@ -63,6 +63,7 @@ class Policy:
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
         rospy.sleep(1.0)  # Wait for tf tree to be updated
+        self.vis.workspace(self.task_frame, 0.3)
 
     def update(self, img, x, q):
         raise NotImplementedError
