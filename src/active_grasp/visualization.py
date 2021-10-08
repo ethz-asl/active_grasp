@@ -242,33 +242,3 @@ def create_cam_view_marker(
     ]
     marker.points = [to_point_msg(p) for p in points]
     return marker
-
-
-def create_grasp_markers(
-    frame,
-    grasp,
-    color,
-    ns,
-    id=0,
-    finger_depth=0.05,
-    radius=0.003,
-):
-    w, d = grasp.width, finger_depth
-
-    pose = grasp.pose * Transform.translation([0.0, -w / 2, d / 2])
-    scale = [radius, radius, d]
-    left = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id)
-
-    pose = grasp.pose * Transform.translation([0.0, w / 2, d / 2])
-    scale = [radius, radius, d]
-    right = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id + 1)
-
-    pose = grasp.pose * Transform.translation([0.0, 0.0, -d / 4])
-    scale = [radius, radius, d / 2]
-    wrist = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id + 2)
-
-    pose = grasp.pose * Transform.rotation(Rotation.from_rotvec([np.pi / 2, 0, 0]))
-    scale = [radius, radius, w]
-    palm = create_marker(Marker.CYLINDER, frame, pose, scale, color, ns, id + 3)
-
-    return [left, right, wrist, palm]
