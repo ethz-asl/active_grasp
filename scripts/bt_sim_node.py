@@ -9,7 +9,6 @@ from geometry_msgs.msg import Twist
 import numpy as np
 import rospy
 from sensor_msgs.msg import JointState, Image, CameraInfo
-import skimage.transform
 from scipy import interpolate
 from threading import Thread
 
@@ -17,6 +16,7 @@ from active_grasp.bbox import to_bbox_msg
 from active_grasp.srv import *
 from active_grasp.simulation import Simulation
 from robot_helpers.ros.conversions import *
+from vgn.simulation import apply_noise
 
 
 class BtSimNode:
@@ -318,20 +318,9 @@ class CameraPlugin(Plugin):
         self.depth_pub.publish(msg)
 
 
-def apply_noise(img, k=1000, theta=0.001, sigma=0.005, l=4.0):
-    # Multiplicative and additive noise
-    img *= np.random.gamma(k, theta)
-    h, w = img.shape
-    noise = np.random.randn(int(h / l), int(w / l)) * sigma
-    img += skimage.transform.resize(noise, img.shape, order=1, mode="constant")
-    return img
-
-
 def main():
     rospy.init_node("bt_sim")
     server = BtSimNode()
-    # server.seed(SeedRequest(1))
-    # server.reset(ResetRequest())
     server.run()
 
 

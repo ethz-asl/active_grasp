@@ -4,7 +4,7 @@ from pathlib import Path
 import rospy
 
 from .timer import Timer
-from .visualization import Visualizer
+from .rviz import Visualizer
 from robot_helpers.model import KDLModel
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
@@ -62,36 +62,33 @@ class Policy:
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
         rospy.sleep(1.0)  # Wait for tf tree to be updated
-        self.vis.workspace(self.task_frame, 0.3)
 
     def update(self, img, x, q):
         raise NotImplementedError
 
-    def sort_grasps(self, in_grasps, q):
-        # Transforms grasps into base frame, checks whether they lie on the target, and sorts by their score
-        grasps, scores = [], []
-
-        for grasp in in_grasps:
+    def sort_grasps(self, grasps, qualities, q):
+        """
+        1. Transform grasp configurations into base_frame
+        2. Check whether the finger tips lie within the bounding box
+        3. Remove grasps for which no IK solution was found
+        4. Sort grasps according to score_fn
+        """
+        filtered_grasps, scores = [], []
+        for grasp, quality in zip(grasps, qualities):
             pose = self.T_base_task * grasp.pose
             R, t = pose.rotation, pose.translation
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
-
-            # Filter out artifacts close to the support
-            if t[2] < self.bbox.min[2] + 0.05 or tip[2] < self.bbox.min[2] + 0.02:
-                continue
-
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
                 q_grasp = self.ee_model.ik(q, pose * self.T_grasp_ee)
                 if q_grasp is not None:
-                    grasps.append(grasp)
-                    scores.append(self.score_fn(grasp, q, q_grasp))
+                    filtered_grasps.append(grasp)
+                    scores.append(self.score_fn(grasp, quality, q, q_grasp))
+        filtered_grasps, scores = np.asarray(filtered_grasps), np.asarray(scores)
+        i = np.argsort(-scores)
+        return filtered_grasps[i], qualities[i], scores[i]
 
-        grasps, scores = np.asarray(grasps), np.asarray(scores)
-        indices = np.argsort(-scores)
-        return grasps[indices], scores[indices]
-
-    def score_fn(self, grasp, q, q_grasp):
+    def score_fn(self, grasp, quality, q, q_grasp):
         return -np.linalg.norm(q - q_grasp)
 
 
@@ -108,8 +105,8 @@ class SingleViewPolicy(Policy):
             out = self.vgn.predict(tsdf_grid)
             self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
 
-            grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
-            grasps, _ = self.sort_grasps(grasps, q)
+            grasps, qualities = select_grid(voxel_size, out, self.qual_threshold)
+            grasps, _ = self.sort_grasps(grasps, qualities, q)
 
             if len(grasps) > 0:
                 self.best_grasp = grasps[0]
@@ -143,17 +140,16 @@ class MultiViewPolicy(Policy):
         self.qual_hist[t, ...] = out.qual
 
         with Timer("grasp_selection"):
-            grasps = select_grid(voxel_size, out, threshold=self.qual_threshold)
-            grasps, _ = self.sort_grasps(grasps, q)
-
-        self.vis.clear_grasps()
+            grasps, qualities = select_grid(voxel_size, out, self.qual_threshold)
+            grasps, qualities, _ = self.sort_grasps(grasps, qualities, q)
 
         if len(grasps) > 0:
             self.best_grasp = grasps[0]
-            self.vis.grasps(self.base_frame, grasps)
-            self.vis.best_grasp(self.base_frame, self.best_grasp)
+            # self.vis.grasps(self.base_frame, grasps, qualities)
+            self.vis.grasp(self.base_frame, self.best_grasp, qualities[0])
         else:
             self.best_grasp = None
+            self.vis.clear_grasp()
 
 
 def compute_error(x_d, x):
