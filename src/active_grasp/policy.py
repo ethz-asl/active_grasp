@@ -36,7 +36,8 @@ class Policy:
         self.vis = Visualizer()
 
     def is_feasible(self, view, q_init=None):
-        q_init = q_init if q_init else [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]
+        if q_init is None:
+            q_init = [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]
         return self.model.ik(q_init, view) is not None
 
     def activate(self, bbox, view_sphere):

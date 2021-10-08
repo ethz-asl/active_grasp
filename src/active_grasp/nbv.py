@@ -70,7 +70,7 @@ class NextBestView(MultiViewPolicy):
             with Timer("state_update"):
                 self.integrate(img, x, q)
             with Timer("view_generation"):
-                views = self.generate_views()
+                views = self.generate_views(q)
             with Timer("ig_computation"):
                 gains = [self.ig_fn(v, 10) for v in views]
             with Timer("cost_computation"):
@@ -98,13 +98,13 @@ class NextBestView(MultiViewPolicy):
                 return True
         return False
 
-    def generate_views(self):
+    def generate_views(self, q):
         thetas = np.deg2rad([15, 30, 45])
         phis = np.arange(6) * np.deg2rad(60)
         view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
             view = self.view_sphere.get_view(theta, phi)
-            if self.is_feasible(view):
+            if self.is_feasible(view, q):
                 view_candidates.append(view)
         return view_candidates
 
