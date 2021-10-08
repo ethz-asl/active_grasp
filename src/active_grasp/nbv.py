@@ -62,18 +62,6 @@ class NextBestView(MultiViewPolicy):
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
-        with Timer("view_generation"):
-            self.generate_view_candidates()
-        self.info["view_candidates_count"] = len(self.view_candidates)
-
-    def generate_view_candidates(self):
-        thetas = np.deg2rad([15, 30, 45])
-        phis = np.arange(8) * np.deg2rad(45)
-        self.view_candidates = []
-        for theta, phi in itertools.product(thetas, phis):
-            view = self.view_sphere.get_view(theta, phi)
-            if self.is_feasible(view):
-                self.view_candidates.append(view)
 
     def update(self, img, x, q):
         if len(self.views) > self.max_views or self.best_grasp_prediction_is_stable():
@@ -81,7 +69,8 @@ class NextBestView(MultiViewPolicy):
         else:
             with Timer("state_update"):
                 self.integrate(img, x, q)
-            views = self.view_candidates
+            with Timer("view_generation"):
+                views = self.generate_views()
             with Timer("ig_computation"):
                 gains = [self.ig_fn(v, 10) for v in views]
             with Timer("cost_computation"):
@@ -108,6 +97,16 @@ class NextBestView(MultiViewPolicy):
             ):
                 return True
         return False
+
+    def generate_views(self):
+        thetas = np.deg2rad([15, 30, 45])
+        phis = np.arange(6) * np.deg2rad(60)
+        view_candidates = []
+        for theta, phi in itertools.product(thetas, phis):
+            view = self.view_sphere.get_view(theta, phi)
+            if self.is_feasible(view):
+                view_candidates.append(view)
+        return view_candidates
 
     def ig_fn(self, view, downsample):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
