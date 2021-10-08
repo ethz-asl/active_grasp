@@ -8,7 +8,7 @@ grasp_controller:
   ee_grasp_offset: [0.0, 0.0, -0.383, 0.924, 0.0, 0.0, 0.065]  # offset to panda_link8
   control_rate: 30
   linear_vel: 0.05
-  policy_rate: 5
+  policy_rate: 2
   camera:
     frame_id: camera_depth_optical_frame
     info_topic: /camera/depth/camera_info
