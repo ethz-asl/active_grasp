@@ -99,8 +99,8 @@ class NextBestView(MultiViewPolicy):
         return False
 
     def generate_views(self, q):
-        thetas = np.deg2rad([15, 30, 45])
-        phis = np.arange(6) * np.deg2rad(60)
+        thetas = np.deg2rad([15, 30])
+        phis = np.arange(8) * np.deg2rad(45)
         view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
             view = self.view_sphere.get_view(theta, phi)
