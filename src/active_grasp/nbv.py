@@ -57,8 +57,8 @@ class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
-        self.max_views = 50
-        self.min_gain = 0.0
+        self.max_views = rospy.get_param("nbv_grasp/max_views")
+        self.min_gain = rospy.get_param("nbv_grasp/min_gain")
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)

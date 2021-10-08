@@ -34,7 +34,7 @@ class GraspController:
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
         self.control_rate = rospy.get_param("~control_rate")
         self.linear_vel = rospy.get_param("~linear_vel")
-        self.policy_rate = rospy.get_param("~policy_rate")
+        self.policy_rate = rospy.get_param("policy/rate")
 
     def init_service_proxies(self):
         self.reset_env = rospy.ServiceProxy("reset", Reset)

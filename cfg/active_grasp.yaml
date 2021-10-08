@@ -1,6 +1,6 @@
 bt_sim:
   gui: False
-  cam_noise: True
+  cam_noise: False
   scene: kitchen.yaml
 
 grasp_controller:
@@ -8,14 +8,21 @@ grasp_controller:
   ee_grasp_offset: [0.0, 0.0, -0.383, 0.924, 0.0, 0.0, 0.065]  # offset to panda_link8
   control_rate: 30
   linear_vel: 0.05
-  policy_rate: 2
   camera:
     frame_id: camera_depth_optical_frame
     info_topic: /camera/depth/camera_info
     depth_topic: /camera/depth/image_rect_raw
     min_z_dist: 0.3
-    
+
 vgn:
   model: $(find vgn)/assets/models/vgn_conv.pth
   finger_depth: 0.05
   qual_threshold: 0.9
+
+policy:
+  rate: 2
+  window_size: 6
+
+nbv_grasp:
+  max_views: 30
+  min_gain: 0.0

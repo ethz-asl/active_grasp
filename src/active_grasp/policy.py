@@ -118,9 +118,12 @@ class SingleViewPolicy(Policy):
 
 
 class MultiViewPolicy(Policy):
+    def __init__(self):
+        super().__init__()
+        self.T = rospy.get_param("policy/window_size")
+
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
-        self.T = 10  # Window size of grasp prediction history
         self.qual_hist = np.zeros((self.T,) + (40,) * 3, np.float32)
 
     def integrate(self, img, x, q):
