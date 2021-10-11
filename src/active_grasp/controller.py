@@ -12,7 +12,7 @@ from active_grasp.srv import Reset, ResetRequest
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from robot_helpers.ros.panda import PandaArmClient, PandaGripperClient
-from robot_helpers.ros.moveit import MoveItClient
+from robot_helpers.ros.moveit import MoveItClient, create_collision_object_from_meshes
 from robot_helpers.spatial import Rotation, Transform
 from vgn.utils import look_at, cartesian_to_spherical, spherical_to_cartesian
 
@@ -79,14 +79,19 @@ class GraspController:
         with Timer("search_time"):
             grasp = self.search_grasp(bbox)
 
-        self.switch_to_joint_trajectory_control()
-        with Timer("grasp_time"):
-            res = self.execute_grasp(grasp)
+        if grasp:
+            self.switch_to_joint_trajectory_control()
+            self.create_collision_scene()
+            with Timer("grasp_time"):
+                res = self.execute_grasp(grasp)
+        else:
+            res = "aborted"
 
         return self.collect_info(res)
 
     def reset(self):
         Timer.reset()
+        self.moveit.scene.clear()
         res = self.reset_env(ResetRequest())
         rospy.sleep(1.0)  # Wait for the TF tree to be updated.
         return from_bbox_msg(res.bbox)
@@ -130,9 +135,23 @@ class GraspController:
         angular = 0.5 * angular.as_rotvec()
         return np.r_[linear, angular]
 
+    def create_collision_scene(self):
+        # Segment support plane, cluster, and create collision objects from convex hulls
+        cloud = self.policy.tsdf.get_scene_cloud()
+        plane_model, inliers = cloud.segment_plane(0.01, 3, 1000)
+        cloud = cloud.select_by_index(inliers, invert=True)
+        labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
+        hulls = []
+        for l in range(labels.max() + 1):
+            segment = cloud.select_by_index(np.flatnonzero(labels == l))
+            hulls.append(segment.compute_convex_hull()[0])
+        collision_object = create_collision_object_from_meshes(
+            "objects", self.policy.task_frame, Transform.identity(), hulls
+        )
+        self.moveit.scene.add_object(collision_object)
+        rospy.sleep(1.0)
+
     def execute_grasp(self, grasp):
-        if not grasp:
-            return "aborted"
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
         self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
