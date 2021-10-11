@@ -26,7 +26,7 @@ class Policy:
         info_topic = rospy.get_param("~camera/info_topic")
         msg = rospy.wait_for_message(info_topic, CameraInfo, rospy.Duration(2.0))
         self.intrinsic = from_camera_info_msg(msg)
-        self.qual_threshold = rospy.get_param("vgn/qual_threshold")
+        self.qual_thresh = rospy.get_param("vgn/qual_threshold")
 
     def init_robot_model(self):
         self.model = KDLModel.from_parameter_server(self.base_frame, self.cam_frame)
@@ -91,7 +91,7 @@ class Policy:
         return filtered_grasps[i], qualities[i], scores[i]
 
     def score_fn(self, grasp, quality, q, q_grasp):
-        return -np.linalg.norm(q - q_grasp)
+        return grasp.pose.translation[2]
 
 
 class SingleViewPolicy(Policy):
@@ -107,7 +107,7 @@ class SingleViewPolicy(Policy):
             out = self.vgn.predict(tsdf_grid)
             self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
 
-            grasps, qualities = select_grid(voxel_size, out, self.qual_threshold)
+            grasps, qualities = select_local_maxima(voxel_size, out, self.qual_thresh)
             grasps, _ = self.sort_grasps(grasps, qualities, q)
 
             if len(grasps) > 0:
@@ -145,7 +145,7 @@ class MultiViewPolicy(Policy):
         self.qual_hist[t, ...] = out.qual
 
         with Timer("grasp_selection"):
-            grasps, qualities = select_grid(voxel_size, out, self.qual_threshold)
+            grasps, qualities = select_local_maxima(voxel_size, out, self.qual_thresh)
             grasps, qualities, _ = self.sort_grasps(grasps, qualities, q)
 
         if len(grasps) > 0:
