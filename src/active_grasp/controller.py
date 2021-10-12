@@ -5,6 +5,7 @@ from geometry_msgs.msg import Twist
 import numpy as np
 import rospy
 from sensor_msgs.msg import Image
+import trimesh
 
 from .bbox import from_bbox_msg
 from .timer import Timer
@@ -12,7 +13,7 @@ from active_grasp.srv import Reset, ResetRequest
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from robot_helpers.ros.panda import PandaArmClient, PandaGripperClient
-from robot_helpers.ros.moveit import MoveItClient, create_collision_object_from_meshes
+from robot_helpers.ros.moveit import MoveItClient, create_collision_object_from_mesh
 from robot_helpers.spatial import Rotation, Transform
 from vgn.utils import look_at, cartesian_to_spherical, spherical_to_cartesian
 
@@ -28,6 +29,7 @@ class GraspController:
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
+        self.task_frame = self.policy.task_frame
         self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
         self.cam_frame = rospy.get_param("~camera/frame_id")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
@@ -50,8 +52,6 @@ class GraspController:
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
         rospy.sleep(1.0)  # Wait for connections to be established.
-        # msg = to_pose_stamped_msg(Transform.t([0.4, 0, 0.4]), self.base_frame)
-        # self.moveit.scene.add_box("table", msg, size=(0.5, 0.5, 0.02))
 
     def switch_to_cartesian_velocity_control(self):
         req = SwitchControllerRequest()
@@ -141,14 +141,12 @@ class GraspController:
         plane_model, inliers = cloud.segment_plane(0.01, 3, 1000)
         cloud = cloud.select_by_index(inliers, invert=True)
         labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
-        hulls = []
         for l in range(labels.max() + 1):
             segment = cloud.select_by_index(np.flatnonzero(labels == l))
-            hulls.append(segment.compute_convex_hull()[0])
-        collision_object = create_collision_object_from_meshes(
-            "objects", self.policy.task_frame, Transform.identity(), hulls
-        )
-        self.moveit.scene.add_object(collision_object)
+            hull = trimesh.points.PointCloud(np.asarray(segment.points)).convex_hull
+            name, frame, pose = f"object_{l}", self.task_frame, Transform.identity()
+            co = create_collision_object_from_mesh(name, frame, pose, hull)
+            self.moveit.scene.add_object(co)
         rospy.sleep(1.0)
 
     def execute_grasp(self, grasp):
