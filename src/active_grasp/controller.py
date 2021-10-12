@@ -138,21 +138,25 @@ class GraspController:
         # Segment support plane, cluster, and create collision objects from convex hulls
         cloud = self.policy.tsdf.get_scene_cloud()
         cloud = cloud.transform(self.policy.T_base_task.as_matrix())
-        plane_model, inliers = cloud.segment_plane(0.01, 3, 1000)
+        _, inliers = cloud.segment_plane(0.01, 3, 1000)
         cloud = cloud.select_by_index(inliers, invert=True)
         labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
         self.target_co_name, min_dist = None, np.inf
         tip = grasp.pose.apply([0.0, 0.0, 0.05])
         for l in range(labels.max() + 1):
             segment = cloud.select_by_index(np.flatnonzero(labels == l))
-            hull = trimesh.points.PointCloud(np.asarray(segment.points)).convex_hull
-            name, frame, pose = f"object_{l}", self.base_frame, Transform.identity()
-            co = create_collision_object_from_mesh(name, frame, pose, hull)
-            self.moveit.scene.add_object(co)
+            hull = compute_convex_hull(segment)
+            name = f"object_{l}"
+            self.add_collision_mesh(name, hull)
             dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
             if dist < min_dist:
                 self.target_co_name, min_dist = name, dist
         rospy.sleep(1.0)
+
+    def add_collision_mesh(self, name, mesh):
+        frame, pose = self.base_frame, Transform.identity()
+        co = create_collision_object_from_mesh(name, frame, pose, mesh)
+        self.moveit.scene.add_object(co)
 
     def execute_grasp(self, grasp):
         T_base_grasp = self.postprocess(grasp.pose)
@@ -184,6 +188,10 @@ class GraspController:
         info.update(self.policy.info)
         info.update(Timer.timers)
         return info
+
+
+def compute_convex_hull(cloud):
+    return trimesh.points.PointCloud(np.asarray(cloud.points)).convex_hull
 
 
 class ViewHalfSphere:
