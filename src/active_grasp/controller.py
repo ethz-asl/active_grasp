@@ -29,7 +29,6 @@ class GraspController:
 
     def load_parameters(self):
         self.base_frame = rospy.get_param("~base_frame_id")
-        self.task_frame = self.policy.task_frame
         self.T_grasp_ee = Transform.from_list(rospy.get_param("~ee_grasp_offset")).inv()
         self.cam_frame = rospy.get_param("~camera/frame_id")
         self.depth_topic = rospy.get_param("~camera/depth_topic")
@@ -81,7 +80,7 @@ class GraspController:
 
         if grasp:
             self.switch_to_joint_trajectory_control()
-            self.create_collision_scene()
+            self.create_collision_scene(grasp)
             with Timer("grasp_time"):
                 res = self.execute_grasp(grasp)
         else:
@@ -135,24 +134,32 @@ class GraspController:
         angular = 0.5 * angular.as_rotvec()
         return np.r_[linear, angular]
 
-    def create_collision_scene(self):
+    def create_collision_scene(self, grasp):
         # Segment support plane, cluster, and create collision objects from convex hulls
         cloud = self.policy.tsdf.get_scene_cloud()
+        cloud = cloud.transform(self.policy.T_base_task.as_matrix())
         plane_model, inliers = cloud.segment_plane(0.01, 3, 1000)
         cloud = cloud.select_by_index(inliers, invert=True)
         labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
+        self.target_co_name, min_dist = None, np.inf
+        tip = grasp.pose.apply([0.0, 0.0, 0.05])
         for l in range(labels.max() + 1):
             segment = cloud.select_by_index(np.flatnonzero(labels == l))
             hull = trimesh.points.PointCloud(np.asarray(segment.points)).convex_hull
-            name, frame, pose = f"object_{l}", self.task_frame, Transform.identity()
+            name, frame, pose = f"object_{l}", self.base_frame, Transform.identity()
             co = create_collision_object_from_mesh(name, frame, pose, hull)
             self.moveit.scene.add_object(co)
+            dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
+            if dist < min_dist:
+                self.target_co_name, min_dist = name, dist
         rospy.sleep(1.0)
 
     def execute_grasp(self, grasp):
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
         self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
+        self.moveit.scene.attach_mesh("panda_hand", self.target_co_name)
+        rospy.sleep(0.5)
         self.moveit.goto(T_base_grasp * self.T_grasp_ee)
         self.gripper.grasp()
         self.moveit.goto(Transform.t([0, 0, 0.1]) * T_base_grasp * self.T_grasp_ee)
