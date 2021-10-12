@@ -253,7 +253,7 @@ class GraspActionPlugin(Plugin):
     def action_goal_cb(self):
         self.elapsed_time = 0.0
         goal = self.action_server.accept_new_goal()
-        self.gripper.set_desired_width(goal.width)
+        self.gripper.set_desired_speed(-0.1)
 
     def update(self):
         if self.action_server.is_active():

@@ -63,6 +63,7 @@ class Simulation:
             p.resetJointState(self.arm.uid, i, q_i, 0)
         p.resetJointState(self.arm.uid, 9, 0.04, 0)
         p.resetJointState(self.arm.uid, 10, 0.04, 0)
+        self.gripper.set_desired_width(0.4)
 
     def select_target(self):
         _, _, mask = self.camera.get_image()
