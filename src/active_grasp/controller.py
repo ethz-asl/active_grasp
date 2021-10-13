@@ -51,6 +51,9 @@ class GraspController:
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
         rospy.sleep(1.0)  # Wait for connections to be established.
+        self.moveit.move_group.set_planner_id("PRMstarkConfigDefault")
+        self.moveit.move_group.set_num_planning_attempts(10)
+        self.moveit.move_group.set_planning_time(5.0)
 
     def switch_to_cartesian_velocity_control(self):
         req = SwitchControllerRequest()
@@ -167,7 +170,7 @@ class GraspController:
         self.moveit.goto(T_base_grasp * self.T_grasp_ee)
         self.gripper.grasp()
         self.moveit.goto(Transform.t([0, 0, 0.1]) * T_base_grasp * self.T_grasp_ee)
-        success = self.gripper.read() > 0.005
+        success = self.gripper.read() > 0.002
         return "succeeded" if success else "failed"
 
     def postprocess(self, T_base_grasp):
