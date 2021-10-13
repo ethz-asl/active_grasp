@@ -242,6 +242,7 @@ class GraspActionPlugin(Plugin):
         super().__init__(rate)
         self.gripper = gripper
         self.dt = 1.0 / self.rate
+        self.force = rospy.get_param("~gripper_force")
         self.init_action_server()
 
     def init_action_server(self):
@@ -253,7 +254,7 @@ class GraspActionPlugin(Plugin):
     def action_goal_cb(self):
         self.elapsed_time = 0.0
         goal = self.action_server.accept_new_goal()
-        self.gripper.set_desired_speed(-0.1)
+        self.gripper.set_desired_speed(-0.1, force=self.force)
 
     def update(self):
         if self.action_server.is_active():
