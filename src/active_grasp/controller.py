@@ -140,7 +140,7 @@ class GraspController:
         self.create_collision_scene(grasp)
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
-        self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
+        self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee)
         self.moveit.scene.remove_world_object(self.target_co_name)
         rospy.sleep(0.5)  # Wait for the planning scene to be updated
         self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
