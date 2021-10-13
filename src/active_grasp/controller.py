@@ -76,18 +76,15 @@ class GraspController:
 
     def run(self):
         bbox = self.reset()
-
         self.switch_to_cartesian_velocity_control()
         with Timer("search_time"):
             grasp = self.search_grasp(bbox)
-
         if grasp:
             self.switch_to_joint_trajectory_control()
             with Timer("grasp_time"):
                 res = self.execute_grasp(grasp)
         else:
             res = "aborted"
-
         return self.collect_info(res)
 
     def reset(self):
