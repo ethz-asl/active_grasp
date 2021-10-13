@@ -165,11 +165,12 @@ class GraspController:
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
         self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
-        self.moveit.scene.attach_mesh("panda_hand", self.target_co_name)
-        rospy.sleep(0.5)
-        self.moveit.goto(T_base_grasp * self.T_grasp_ee)
+        self.moveit.scene.remove_world_object(self.target_co_name)
+        rospy.sleep(0.5)  # Wait for the planning scene to be updated
+        self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
         self.gripper.grasp()
-        self.moveit.goto(Transform.t([0, 0, 0.1]) * T_base_grasp * self.T_grasp_ee)
+        self.moveit.gotoL(Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee)
+        rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
         success = self.gripper.read() > 0.002
         return "succeeded" if success else "failed"
 
