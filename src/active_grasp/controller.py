@@ -83,7 +83,6 @@ class GraspController:
 
         if grasp:
             self.switch_to_joint_trajectory_control()
-            self.create_collision_scene(grasp)
             with Timer("grasp_time"):
                 res = self.execute_grasp(grasp)
         else:
@@ -137,6 +136,20 @@ class GraspController:
         angular = 0.5 * angular.as_rotvec()
         return np.r_[linear, angular]
 
+    def execute_grasp(self, grasp):
+        self.create_collision_scene(grasp)
+        T_base_grasp = self.postprocess(grasp.pose)
+        self.gripper.move(0.08)
+        self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
+        self.moveit.scene.remove_world_object(self.target_co_name)
+        rospy.sleep(0.5)  # Wait for the planning scene to be updated
+        self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
+        self.gripper.grasp()
+        self.moveit.gotoL(Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee)
+        rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
+        success = self.gripper.read() > 0.002
+        return "succeeded" if success else "failed"
+
     def create_collision_scene(self, grasp):
         # Segment support plane, cluster, and create collision objects from convex hulls
         cloud = self.policy.tsdf.get_scene_cloud()
@@ -160,19 +173,6 @@ class GraspController:
         frame, pose = self.base_frame, Transform.identity()
         co = create_collision_object_from_mesh(name, frame, pose, mesh)
         self.moveit.scene.add_object(co)
-
-    def execute_grasp(self, grasp):
-        T_base_grasp = self.postprocess(grasp.pose)
-        self.gripper.move(0.08)
-        self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.05]) * self.T_grasp_ee)
-        self.moveit.scene.remove_world_object(self.target_co_name)
-        rospy.sleep(0.5)  # Wait for the planning scene to be updated
-        self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
-        self.gripper.grasp()
-        self.moveit.gotoL(Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee)
-        rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
-        success = self.gripper.read() > 0.002
-        return "succeeded" if success else "failed"
 
     def postprocess(self, T_base_grasp):
         rot = T_base_grasp.rotation

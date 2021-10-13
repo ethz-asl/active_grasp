@@ -41,6 +41,7 @@ def create_parser():
 
 class Logger:
     def __init__(self, args):
+        args.logdir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%y%m%d-%H%M%S")
         name = "{}_policy={},seed={}.csv".format(
             stamp,
