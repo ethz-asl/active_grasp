@@ -9,11 +9,9 @@ from robot_helpers.bullet import *
 from robot_helpers.model import KDLModel
 from robot_helpers.spatial import Rotation
 
-
 rospack = rospkg.RosPack()
-
-active_grasp_urdfs_dir = Path(rospack.get_path("active_grasp")) / "assets" / "urdfs"
-urdf_zoo_dir = Path(rospack.get_path("urdf_zoo")) / "models"
+active_grasp_dir = Path(rospack.get_path("active_grasp"))
+urdf_zoo_dir = Path(rospack.get_path("urdf_zoo"))
 
 
 class Simulation:
@@ -38,7 +36,7 @@ class Simulation:
         p.resetDebugVisualizerCamera(1.2, 30, -30, [0.4, 0.0, 0.2])
 
     def load_robot(self):
-        panda_urdf_path = active_grasp_urdfs_dir / "franka/panda_arm_hand.urdf"
+        panda_urdf_path = active_grasp_dir / "assets/franka/panda_arm_hand.urdf"
         self.arm = BtPandaArm(panda_urdf_path)
         self.gripper = BtPandaGripper(self.arm)
         self.model = KDLModel.from_urdf_file(
@@ -84,8 +82,8 @@ class Simulation:
 
 class Scene:
     def __init__(self):
-        self.support_urdf = urdf_zoo_dir / "plane" / "model.urdf"
-        self.ycb_urdfs_dir = urdf_zoo_dir / "ycb"
+        self.support_urdf = urdf_zoo_dir / "models/plane/model.urdf"
+        self.ycb_urdfs_dir = urdf_zoo_dir / "models/ycb"
         self.support_uid = -1
         self.object_uids = []
 
@@ -131,7 +129,7 @@ class RandomScene(Scene):
         self.center = np.r_[0.5, 0.0, 0.2]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
-        self.object_urdfs = find_urdfs(active_grasp_urdfs_dir / "packed")
+        self.object_urdfs = find_urdfs(urdf_zoo_dir / "models/vgn/packed/test")
 
     def load(self, rng, attempts=10):
         self.load_support(self.center)
