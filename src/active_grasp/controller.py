@@ -148,22 +148,30 @@ class GraspController:
         return "succeeded" if success else "failed"
 
     def create_collision_scene(self, grasp):
-        # Segment support plane, cluster, and create collision objects from convex hulls
+        # Segment support surface
         cloud = self.policy.tsdf.get_scene_cloud()
         cloud = cloud.transform(self.policy.T_base_task.as_matrix())
         _, inliers = cloud.segment_plane(0.01, 3, 1000)
+        support_cloud = cloud.select_by_index(inliers)
         cloud = cloud.select_by_index(inliers, invert=True)
+
+        # Cluster cloud, generate convex hulls and add collision objects to the scene
         labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
-        self.target_co_name, min_dist = None, np.inf
+        self.target_co_name = None
+        min_dist = np.inf
         tip = grasp.pose.apply([0.0, 0.0, 0.05])
-        for l in range(labels.max() + 1):
-            segment = cloud.select_by_index(np.flatnonzero(labels == l))
+        for label in range(labels.max() + 1):
+            segment = cloud.select_by_index(np.flatnonzero(labels == label))
             hull = compute_convex_hull(segment)
-            name = f"object_{l}"
+            name = f"object_{label}"
             self.add_collision_mesh(name, hull)
             dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
             if dist < min_dist:
                 self.target_co_name, min_dist = name, dist
+
+        # Add collision object for the support
+        self.add_collision_mesh("support", compute_convex_hull(support_cloud))
+
         rospy.sleep(1.0)
 
     def add_collision_mesh(self, name, mesh):
