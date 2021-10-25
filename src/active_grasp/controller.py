@@ -51,7 +51,7 @@ class GraspController:
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")
         rospy.sleep(1.0)  # Wait for connections to be established.
-        self.moveit.move_group.set_planner_id("PRMstarkConfigDefault")
+        self.moveit.move_group.set_planner_id("RRTstarkConfigDefault")
         # self.moveit.move_group.set_num_planning_attempts(10)
         self.moveit.move_group.set_planning_time(6.0)
 
