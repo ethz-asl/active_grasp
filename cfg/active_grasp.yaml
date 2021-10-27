@@ -2,7 +2,7 @@ bt_sim:
   gui: False
   cam_noise: False
   gripper_force: 10
-  scene: mustard1.yaml
+  scene: mustard.yaml
 
 grasp_controller:
   base_frame_id: panda_link0

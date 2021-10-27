@@ -178,12 +178,14 @@ class CustomScene(Scene):
         self.load_config()
         self.load_support(self.center)
         for object in self.scene["objects"]:
-            self.load_object(
-                self.get_ycb_urdf_path(object["object_id"]),
-                Rotation.from_euler("xyz", object["rpy"], degrees=True),
-                self.center + np.asarray(object["xyz"]),
-                object.get("scale", 1),
-            )
+            urdf = self.get_ycb_urdf_path(object["object_id"])
+            ori = Rotation.from_euler("xyz", object["rpy"], degrees=True)
+            pos = self.center + np.asarray(object["xyz"])
+            scale = object.get("scale", 1)
+            if object.get("randomize", False):
+                ori = Rotation.from_euler("z", rng.uniform(0, 2 * np.pi))
+                pos[:2] += rng.uniform(-0.05, 0.05, 2)
+            self.load_object(urdf, ori, pos, scale)
         for _ in range(60):
             p.stepSimulation()
 
