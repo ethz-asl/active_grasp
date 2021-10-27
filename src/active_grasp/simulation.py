@@ -8,10 +8,11 @@ from active_grasp.bbox import AABBox
 from robot_helpers.bullet import *
 from robot_helpers.model import KDLModel
 from robot_helpers.spatial import Rotation
+from vgn.utils import find_urdfs, load_cfg
 
 rospack = rospkg.RosPack()
-active_grasp_dir = Path(rospack.get_path("active_grasp"))
-urdf_zoo_dir = Path(rospack.get_path("urdf_zoo"))
+pkg_root = Path(rospack.get_path("active_grasp"))
+assets_dir = pkg_root / "assets"
 
 
 class Simulation:
@@ -36,7 +37,7 @@ class Simulation:
         p.resetDebugVisualizerCamera(1.2, 30, -30, [0.4, 0.0, 0.2])
 
     def load_robot(self):
-        panda_urdf_path = active_grasp_dir / "assets/franka/panda_arm_hand.urdf"
+        panda_urdf_path = assets_dir / "franka/panda_arm_hand.urdf"
         self.arm = BtPandaArm(panda_urdf_path)
         self.gripper = BtPandaGripper(self.arm)
         self.model = KDLModel.from_urdf_file(
@@ -82,8 +83,7 @@ class Simulation:
 
 class Scene:
     def __init__(self):
-        self.support_urdf = urdf_zoo_dir / "models/plane/model.urdf"
-        self.ycb_urdfs_dir = urdf_zoo_dir / "models/ycb"
+        self.support_urdf = assets_dir / "plane/model.urdf"
         self.support_uid = -1
         self.object_uids = []
 
@@ -114,14 +114,6 @@ class Scene:
     def load(self, rng):
         raise NotImplementedError
 
-    def get_ycb_urdf_path(self, model_name):
-        return self.ycb_urdfs_dir / model_name / "model.urdf"
-
-
-def find_urdfs(root):
-    # Scans a dir for URDF assets
-    return [str(f) for f in root.iterdir() if f.suffix == ".urdf"]
-
 
 class RandomScene(Scene):
     def __init__(self):
@@ -129,7 +121,7 @@ class RandomScene(Scene):
         self.center = np.r_[0.5, 0.0, 0.2]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
-        self.object_urdfs = find_urdfs(urdf_zoo_dir / "models/vgn/packed/test")
+        self.object_urdfs = find_urdfs(assets_dir / "test")
 
     def load(self, rng, attempts=10):
         self.load_support(self.center)
@@ -163,22 +155,22 @@ class RandomScene(Scene):
 class CustomScene(Scene):
     def __init__(self, config_name):
         super().__init__()
-        self.config_path = (
-            Path(rospack.get_path("active_grasp")) / "cfg" / "scenes" / config_name
-        )
+        self.config_path = pkg_root / "cfg/scenes" / config_name
 
     def load_config(self):
-        with self.config_path.open("r") as f:
-            self.scene = yaml.load(f, Loader=yaml.FullLoader)
+        self.scene = load_cfg(self.config_path)
         self.center = np.asarray(self.scene["center"])
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
+
+    def get_urdf_path(self, model_name):
+        return assets_dir / "ycb_subset" / model_name / "model.urdf"
 
     def load(self, rng):
         self.load_config()
         self.load_support(self.center)
         for object in self.scene["objects"]:
-            urdf = self.get_ycb_urdf_path(object["object_id"])
+            urdf = self.get_urdf_path(object["object_id"])
             ori = Rotation.from_euler("xyz", object["rpy"], degrees=True)
             pos = self.center + np.asarray(object["xyz"])
             scale = object.get("scale", 1)
