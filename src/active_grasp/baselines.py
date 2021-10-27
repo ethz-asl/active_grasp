@@ -27,3 +27,11 @@ class TopTrajectory(MultiViewPolicy):
         linear, _ = compute_error(self.x_d, x)
         if np.linalg.norm(linear) < 0.02:
             self.done = True
+
+
+class FixedTrajectory(MultiViewPolicy):
+    def activate(self, bbox, view_sphere):
+        pass
+
+    def update(self, img, x, q):
+        pass
