@@ -153,18 +153,18 @@ class RandomScene(Scene):
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
         self.object_urdfs = find_urdfs(assets_dir / "test")
 
-    def generate(self, rng, attempts=10):
+    def generate(self, rng, object_count=4, attempts=10):
         self.add_support(self.center)
-        urdfs = rng.choice(self.object_urdfs, 4)
-        scale = 1.0
+        urdfs = rng.choice(self.object_urdfs, object_count)
         for urdf in urdfs:
+            scale = rng.uniform(0.8, 1.0)
             uid = self.add_object(urdf, Rotation.identity(), np.zeros(3), scale)
             lower, upper = p.getAABB(uid)
             z_offset = 0.5 * (upper[2] - lower[2]) + 0.002
             state_id = p.saveState()
             for _ in range(attempts):
                 # Try to place and check for collisions
-                ori = Rotation.from_rotvec([0.0, 0.0, rng.uniform(0, 2 * np.pi)])
+                ori = Rotation.from_euler("z", rng.uniform(0, 2 * np.pi))
                 pos = np.r_[rng.uniform(0.2, 0.8, 2) * self.length, z_offset]
                 p.resetBasePositionAndOrientation(uid, self.origin + pos, ori.as_quat())
                 p.stepSimulation()
