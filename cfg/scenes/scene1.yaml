@@ -1,6 +1,6 @@
 center: [0.5, 0.2, 0.25]
 objects:
-- object_id: 006_mustard_bottle
+- object_id: ycb/006_mustard_bottle
   xyz: [0.0, 0.0, 0.0]
   rpy: [0, 0, -50]
   randomize: {rot: 5, pos: 0.02}

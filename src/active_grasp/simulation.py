@@ -126,14 +126,11 @@ class YamlScene(Scene):
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
 
-    def get_urdf_path(self, model_name):
-        return assets_dir / "ycb_subset" / model_name / "model.urdf"
-
     def generate(self, rng):
         self.load_config()
         self.add_support(self.center)
         for object in self.scene["objects"]:
-            urdf = self.get_urdf_path(object["object_id"])
+            urdf = assets_dir / object["object_id"] / "model.urdf"
             ori = Rotation.from_euler("xyz", object["rpy"], degrees=True)
             pos = self.center + np.asarray(object["xyz"])
             scale = object.get("scale", 1)
