@@ -126,7 +126,7 @@ class GraspController:
         e_t = x_d.translation - x.translation
         e_n = (x.translation - self.view_sphere.center) * (self.view_sphere.r - r) / r
         linear = 1.0 * e_t + 6.0 * (r < self.view_sphere.r) * e_n
-        scale = np.linalg.norm(linear)  # TODO can be zero if x_d == x
+        scale = np.linalg.norm(linear) + 1e-6
         linear *= np.clip(scale, 0.0, self.linear_vel) / scale
         angular = self.view_sphere.get_view(theta, phi).rotation * x.rotation.inv()
         angular = 0.5 * angular.as_rotvec()
