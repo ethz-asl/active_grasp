@@ -199,7 +199,9 @@ class GraspController:
 
 
 def compute_convex_hull(cloud):
-    return trimesh.points.PointCloud(np.asarray(cloud.points)).convex_hull
+    hull, _ = cloud.compute_convex_hull()
+    triangles, vertices = np.asarray(hull.triangles), np.asarray(hull.vertices)
+    return trimesh.base.Trimesh(vertices, triangles)
 
 
 class ViewHalfSphere:
