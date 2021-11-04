@@ -91,7 +91,7 @@ class Policy:
         return filtered_grasps[i], qualities[i], scores[i]
 
     def score_fn(self, grasp, quality, q, q_grasp):
-        return grasp.pose.translation[2]
+        return quality
 
 
 class SingleViewPolicy(Policy):
