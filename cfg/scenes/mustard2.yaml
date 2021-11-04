@@ -1,8 +1,0 @@
-center: [0.5, 0.1, 0.40]
-q:  [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]
-objects:
-- object_id: 006_mustard_bottle
-  xyz: [0.0, 0.1, 0.0]
-  rpy: [0, 0, 0]
-  randomize: True
-
