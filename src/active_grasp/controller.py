@@ -161,12 +161,16 @@ class GraspController:
         tip = grasp.pose.apply([0.0, 0.0, 0.05])
         for label in range(labels.max() + 1):
             segment = cloud.select_by_index(np.flatnonzero(labels == label))
-            hull = compute_convex_hull(segment)
-            name = f"object_{label}"
-            self.add_collision_mesh(name, hull)
-            dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
-            if dist < min_dist:
-                self.target_co_name, min_dist = name, dist
+            try:
+                hull = compute_convex_hull(segment)
+                name = f"object_{label}"
+                self.add_collision_mesh(name, hull)
+                dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
+                if dist < min_dist:
+                    self.target_co_name, min_dist = name, dist
+            except:
+                # Qhull fails in some edge cases
+                pass
 
         # Add collision object for the support
         self.add_collision_mesh("support", compute_convex_hull(support_cloud))
