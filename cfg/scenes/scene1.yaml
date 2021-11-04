@@ -1,0 +1,7 @@
+center: [0.5, 0.0, 0.25]
+objects:
+- object_id: 006_mustard_bottle
+  xyz: [0.0, 0.15, 0.0]
+  rpy: [0, 0, 0]
+  randomize: {rot: 45, pos: 0.02}
+q:  [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]

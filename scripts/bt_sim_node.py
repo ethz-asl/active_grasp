@@ -72,6 +72,7 @@ class BtSimNode:
 
     def seed(self, req):
         self.sim.seed(req.seed)
+        rospy.loginfo(f"Seeded the rng with {req.seed}.")
         return SeedResponse()
 
     def reset(self, req):

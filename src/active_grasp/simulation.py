@@ -21,6 +21,7 @@ class Simulation:
     def __init__(self, gui, scene_id):
         self.configure_physics_engine(gui, 60, 4)
         self.configure_visualizer()
+        self.seed()
         self.load_robot()
         self.scene = get_scene(scene_id)
 
@@ -36,6 +37,9 @@ class Simulation:
         # p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.resetDebugVisualizerCamera(1.2, 30, -30, [0.4, 0.0, 0.2])
 
+    def seed(self, seed=None):
+        self.rng = np.random.default_rng(seed) if seed else np.random
+
     def load_robot(self):
         panda_urdf_path = assets_dir / "franka/panda_arm_hand.urdf"
         self.arm = BtPandaArm(panda_urdf_path)
@@ -45,13 +49,10 @@ class Simulation:
         )
         self.camera = BtCamera(320, 240, 0.96, 0.01, 1.0, self.arm.uid, 11)
 
-    def seed(self, seed):
-        self.rng = np.random.default_rng(seed)
-
     def reset(self):
         self.set_arm_configuration([0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79])
-        self.scene.reset(rng=self.rng)
-        q = self.scene.sample_initial_configuration(self.rng)
+        self.scene.clear()
+        q = self.scene.generate(self.rng)
         self.set_arm_configuration(q)
         uid = self.select_target()
         bbox = self.get_target_bbox(uid)
@@ -87,13 +88,20 @@ class Scene:
         self.support_uid = -1
         self.object_uids = []
 
-    def load_support(self, pos):
+    def clear(self):
+        self.remove_support()
+        self.remove_all_objects()
+
+    def generate(self, rng):
+        raise NotImplementedError
+
+    def add_support(self, pos):
         self.support_uid = p.loadURDF(str(self.support_urdf), pos, globalScaling=0.3)
 
     def remove_support(self):
         p.removeBody(self.support_uid)
 
-    def load_object(self, urdf, ori, pos, scale=1.0):
+    def add_object(self, urdf, ori, pos, scale=1.0):
         uid = p.loadURDF(str(urdf), pos, ori.as_quat(), globalScaling=scale)
         self.object_uids.append(uid)
         return uid
@@ -106,13 +114,37 @@ class Scene:
         for uid in list(self.object_uids):
             self.remove_object(uid)
 
-    def reset(self, rng):
-        self.remove_support()
-        self.remove_all_objects()
-        self.load(rng)
 
-    def load(self, rng):
-        raise NotImplementedError
+class YamlScene(Scene):
+    def __init__(self, config_name):
+        super().__init__()
+        self.config_path = pkg_root / "cfg/scenes" / config_name
+
+    def load_config(self):
+        self.scene = load_cfg(self.config_path)
+        self.center = np.asarray(self.scene["center"])
+        self.length = 0.3
+        self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
+
+    def get_urdf_path(self, model_name):
+        return assets_dir / "ycb_subset" / model_name / "model.urdf"
+
+    def generate(self, rng):
+        self.load_config()
+        self.add_support(self.center)
+        for object in self.scene["objects"]:
+            urdf = self.get_urdf_path(object["object_id"])
+            ori = Rotation.from_euler("xyz", object["rpy"], degrees=True)
+            pos = self.center + np.asarray(object["xyz"])
+            scale = object.get("scale", 1)
+            if randomize := object.get("randomize", False):
+                angle = rng.uniform(-randomize["rot"], randomize["rot"])
+                ori *= Rotation.from_euler("z", angle, degrees=True)
+                pos[:2] += rng.uniform(-randomize["pos"], randomize["pos"], 2)
+            self.add_object(urdf, ori, pos, scale)
+        for _ in range(60):
+            p.stepSimulation()
+        return self.scene["q"]
 
 
 class RandomScene(Scene):
@@ -123,12 +155,12 @@ class RandomScene(Scene):
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
         self.object_urdfs = find_urdfs(assets_dir / "test")
 
-    def load(self, rng, attempts=10):
-        self.load_support(self.center)
+    def generate(self, rng, attempts=10):
+        self.add_support(self.center)
         urdfs = rng.choice(self.object_urdfs, 4)
         scale = 1.0
         for urdf in urdfs:
-            uid = self.load_object(urdf, Rotation.identity(), np.zeros(3), scale)
+            uid = self.add_object(urdf, Rotation.identity(), np.zeros(3), scale)
             lower, upper = p.getAABB(uid)
             z_offset = 0.5 * (upper[2] - lower[2]) + 0.002
             state_id = p.saveState()
@@ -145,50 +177,16 @@ class RandomScene(Scene):
             else:
                 # No placement found, remove the object
                 self.remove_object(uid)
-
-    def sample_initial_configuration(self, rng):
         q = [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]
         q += rng.uniform(-0.08, 0.08, 7)
         return q
 
 
-class CustomScene(Scene):
-    def __init__(self, config_name):
-        super().__init__()
-        self.config_path = pkg_root / "cfg/scenes" / config_name
-
-    def load_config(self):
-        self.scene = load_cfg(self.config_path)
-        self.center = np.asarray(self.scene["center"])
-        self.length = 0.3
-        self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
-
-    def get_urdf_path(self, model_name):
-        return assets_dir / "ycb_subset" / model_name / "model.urdf"
-
-    def load(self, rng):
-        self.load_config()
-        self.load_support(self.center)
-        for object in self.scene["objects"]:
-            urdf = self.get_urdf_path(object["object_id"])
-            ori = Rotation.from_euler("xyz", object["rpy"], degrees=True)
-            pos = self.center + np.asarray(object["xyz"])
-            scale = object.get("scale", 1)
-            if object.get("randomize", False):
-                ori = Rotation.from_euler("z", rng.uniform(0, 2 * np.pi))
-                pos[:2] += rng.uniform(-0.05, 0.05, 2)
-            self.load_object(urdf, ori, pos, scale)
-        for _ in range(60):
-            p.stepSimulation()
-
-    def sample_initial_configuration(self, rng):
-        return self.scene["q"]
-
-
 def get_scene(scene_id):
-    if scene_id == "random":
+    if scene_id.endswith(".yaml"):
+        return YamlScene(scene_id)
+    elif scene_id == "random":
         return RandomScene()
-    elif scene_id.endswith(".yaml"):
-        return CustomScene(scene_id)
+
     else:
         raise ValueError("Unknown scene {}.".format(scene_id))
