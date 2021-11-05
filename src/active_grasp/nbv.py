@@ -104,7 +104,7 @@ class NextBestView(MultiViewPolicy):
         view_candidates = []
         for theta, phi in itertools.product(thetas, phis):
             view = self.view_sphere.get_view(theta, phi)
-            if self.is_feasible(view, q):
+            if self.solve_cam_ik(q, view):
                 view_candidates.append(view)
         return view_candidates
 

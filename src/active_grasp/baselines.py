@@ -13,14 +13,14 @@ class TopView(SingleViewPolicy):
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
         self.x_d = self.view_sphere.get_view(0.0, 0.0)
-        self.done = False if self.is_feasible(self.x_d) else True
+        self.done = False if self.solve_cam_ik(self.q0, self.x_d) else True
 
 
 class TopTrajectory(MultiViewPolicy):
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
         self.x_d = self.view_sphere.get_view(0.0, 0.0)
-        self.done = False if self.is_feasible(self.x_d) else True
+        self.done = False if self.solve_cam_ik(self.q0, self.x_d) else True
 
     def update(self, img, x, q):
         self.integrate(img, x, q)

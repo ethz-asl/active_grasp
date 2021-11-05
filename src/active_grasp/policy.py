@@ -2,20 +2,27 @@ import numpy as np
 from sensor_msgs.msg import CameraInfo
 from pathlib import Path
 import rospy
+from trac_ik_python.trac_ik import IK
+
 
 from .timer import Timer
 from .rviz import Visualizer
-from robot_helpers.model import KDLModel
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from vgn.detection import *
 from vgn.perception import UniformTSDFVolume
 
 
+def solve_ik(q0, pose, solver):
+    x, y, z = pose.translation
+    qx, qy, qz, qw = pose.rotation.as_quat()
+    return solver.get_ik(q0, x, y, z, qx, qy, qz, qw)
+
+
 class Policy:
     def __init__(self):
         self.load_parameters()
-        self.init_robot_model()
+        self.init_ik_solver()
         self.init_visualizer()
 
     def load_parameters(self):
@@ -28,17 +35,19 @@ class Policy:
         self.intrinsic = from_camera_info_msg(msg)
         self.qual_thresh = rospy.get_param("vgn/qual_threshold")
 
-    def init_robot_model(self):
-        self.model = KDLModel.from_parameter_server(self.base_frame, self.cam_frame)
-        self.ee_model = KDLModel.from_parameter_server(self.base_frame, "panda_link8")
+    def init_ik_solver(self):
+        self.q0 = [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]
+        self.cam_ik_solver = IK(self.base_frame, self.cam_frame)
+        self.ee_ik_solver = IK(self.base_frame, "panda_link8")
+
+    def solve_cam_ik(self, q0, view):
+        return solve_ik(q0, view, self.cam_ik_solver)
+
+    def solve_ee_ik(self, q0, pose):
+        return solve_ik(q0, pose, self.ee_ik_solver)
 
     def init_visualizer(self):
         self.vis = Visualizer()
-
-    def is_feasible(self, view, q_init=None):
-        if q_init is None:
-            q_init = [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]
-        return self.model.ik(q_init, view) is not None
 
     def activate(self, bbox, view_sphere):
         self.vis.clear()
@@ -82,7 +91,7 @@ class Policy:
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
-                q_grasp = self.ee_model.ik(q, pose * self.T_grasp_ee)
+                q_grasp = self.solve_ee_ik(q, pose * self.T_grasp_ee)
                 if q_grasp is not None:
                     filtered_grasps.append(grasp)
                     scores.append(self.score_fn(grasp, quality, q, q_grasp))
