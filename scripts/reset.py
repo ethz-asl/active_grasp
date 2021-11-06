@@ -8,7 +8,5 @@ seed = rospy.ServiceProxy("seed", Seed)
 reset = rospy.ServiceProxy("reset", Reset)
 
 seed(SeedRequest(1))
-
-while True:
-    reset(ResetRequest())
-    rospy.sleep(1.0)
+reset(ResetRequest())
+rospy.sleep(1.0)

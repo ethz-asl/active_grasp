@@ -1,7 +1,6 @@
 from pathlib import Path
 import pybullet as p
 import pybullet_data
-import yaml
 import rospkg
 
 from active_grasp.bbox import AABBox
@@ -50,7 +49,7 @@ class Simulation:
         self.camera = BtCamera(320, 240, 0.96, 0.01, 1.0, self.arm.uid, 11)
 
     def reset(self):
-        self.set_arm_configuration([0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79])
+        self.set_arm_configuration([0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79])
         self.scene.clear()
         q = self.scene.generate(self.rng)
         self.set_arm_configuration(q)
