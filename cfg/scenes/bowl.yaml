@@ -1,15 +1,13 @@
 center: [0.5, 0.05, 0.35]
+q:  [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]
 objects:
 - object_id: ycb/004_sugar_box
   xyz: [-0.12, -0.05, 0.0]
   rpy: [0, 0, 30]
-  randomize: {rot: 5, pos: [0.01, 0.005, 0]}
 - object_id: ycb/010_potted_meat_can
   xyz: [-0.1, 0.1, 0.0]
   rpy: [0, 0, 75]
-  randomize: {rot: 5, pos: [0.005, 0.01, 0]}
 - object_id: ycb/024_bowl
   xyz: [0.0, 0.0, 0.0]
   rpy: [0, 0, 0]
   scale: 0.8
-q:  [0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79]
