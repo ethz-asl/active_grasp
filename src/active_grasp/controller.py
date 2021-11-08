@@ -6,6 +6,7 @@ import numpy as np
 import rospy
 from sensor_msgs.msg import Image
 import trimesh
+import time
 
 from .bbox import from_bbox_msg
 from .timer import Timer
@@ -133,11 +134,11 @@ class GraspController:
         return np.r_[linear, angular]
 
     def execute_grasp(self, grasp):
-        self.create_collision_scene(grasp)
+        self.create_collision_scene()
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
         self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee)
-        self.moveit.scene.remove_world_object(self.target_co_name)
+        self.remove_target_collision_object(grasp)
         rospy.sleep(0.5)  # Wait for the planning scene to be updated
         self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
         self.gripper.grasp()
@@ -146,7 +147,7 @@ class GraspController:
         success = self.gripper.read() > 0.002
         return "succeeded" if success else "failed"
 
-    def create_collision_scene(self, grasp):
+    def create_collision_scene(self):
         # Segment support surface
         cloud = self.policy.tsdf.get_scene_cloud()
         cloud = cloud.transform(self.policy.T_base_task.as_matrix())
@@ -154,33 +155,38 @@ class GraspController:
         support_cloud = cloud.select_by_index(inliers)
         cloud = cloud.select_by_index(inliers, invert=True)
 
-        # Cluster cloud, generate convex hulls and add collision objects to the scene
+        # Add collision object for the support
+        self.add_collision_mesh("support", compute_convex_hull(support_cloud))
+
+        # Cluster cloud
         labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
-        self.target_co_name = None
-        min_dist = np.inf
-        tip = grasp.pose.apply([0.0, 0.0, 0.05])
+
+        # Generate convex collision objects for each segment
+        self.hulls = []
         for label in range(labels.max() + 1):
             segment = cloud.select_by_index(np.flatnonzero(labels == label))
             try:
                 hull = compute_convex_hull(segment)
                 name = f"object_{label}"
                 self.add_collision_mesh(name, hull)
-                dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
-                if dist < min_dist:
-                    self.target_co_name, min_dist = name, dist
+                self.hulls.append(hull)
             except:
                 # Qhull fails in some edge cases
                 pass
-
-        # Add collision object for the support
-        self.add_collision_mesh("support", compute_convex_hull(support_cloud))
-
-        rospy.sleep(1.0)
 
     def add_collision_mesh(self, name, mesh):
         frame, pose = self.base_frame, Transform.identity()
         co = create_collision_object_from_mesh(name, frame, pose, mesh)
         self.moveit.scene.add_object(co)
+
+    def remove_target_collision_object(self, grasp):
+        label, min_dist = None, np.inf
+        for i, hull in enumerate(self.hulls):
+            tip = grasp.pose.apply([0.0, 0.0, 0.05])
+            dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
+            if dist < min_dist:
+                label, min_dist = i, dist
+        self.moveit.scene.remove_world_object(f"object_{label}")
 
     def postprocess(self, T_base_grasp):
         rot = T_base_grasp.rotation

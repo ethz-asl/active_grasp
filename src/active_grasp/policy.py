@@ -78,13 +78,7 @@ class Policy:
     def update(self, img, x, q):
         raise NotImplementedError
 
-    def sort_grasps(self, grasps, qualities, q):
-        """
-        1. Transform grasp configurations into base_frame
-        2. Check whether the finger tips lie within the bounding box
-        3. Remove grasps for which no IK solution was found
-        4. Sort grasps according to score_fn
-        """
+    def select_best_grasp(self, grasps, qualities, q):
         filtered_grasps, scores = [], []
         for grasp, quality in zip(grasps, qualities):
             pose = self.T_base_task * grasp.pose
@@ -96,8 +90,7 @@ class Policy:
                 if q_grasp is not None:
                     filtered_grasps.append(grasp)
                     scores.append(self.score_fn(grasp, quality, q, q_grasp))
-        filtered_grasps, scores = np.asarray(filtered_grasps), np.asarray(scores)
-        i = np.argsort(-scores)
+        i = np.argmax(scores)
         return filtered_grasps[i], qualities[i], scores[i]
 
     def score_fn(self, grasp, quality, q, q_grasp):
@@ -116,14 +109,11 @@ class SingleViewPolicy(Policy):
 
             out = self.vgn.predict(tsdf_grid)
             self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
-
             grasps, qualities = select_local_maxima(voxel_size, out, self.qual_thresh)
-            grasps, qualities, _ = self.sort_grasps(grasps, qualities, q)
 
             if len(grasps) > 0:
-                self.best_grasp = grasps[0]
-                # self.vis.grasps(self.base_frame, grasps, qualities)
-                self.vis.grasp(self.base_frame, self.best_grasp, qualities[0])
+                self.best_grasp, qual, _ = self.select_best_grasp(grasps, qualities, q)
+                self.vis.grasp(self.base_frame, self.best_grasp, qual)
 
             self.done = True
 
@@ -156,12 +146,10 @@ class MultiViewPolicy(Policy):
 
         with Timer("grasp_selection"):
             grasps, qualities = select_local_maxima(voxel_size, out, self.qual_thresh)
-            grasps, qualities, _ = self.sort_grasps(grasps, qualities, q)
 
         if len(grasps) > 0:
-            self.best_grasp = grasps[0]
-            # self.vis.grasps(self.base_frame, grasps, qualities)
-            self.vis.grasp(self.base_frame, self.best_grasp, qualities[0])
+            self.best_grasp, quality, _ = self.select_best_grasp(grasps, qualities, q)
+            self.vis.grasp(self.base_frame, self.best_grasp, quality)
         else:
             self.best_grasp = None
             self.vis.clear_grasp()
