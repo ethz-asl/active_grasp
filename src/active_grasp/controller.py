@@ -138,7 +138,7 @@ class GraspController:
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
         T_base_approach = T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee
-        success, plan = self.moveit.plan(T_base_approach)
+        success, plan = self.moveit.plan(T_base_approach, 0.2, 0.2)
         if success:
             self.moveit.execute(plan)
             self.remove_target_collision_object(grasp)
