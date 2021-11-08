@@ -6,6 +6,6 @@ objects:
   rpy: [0, 0, 15]
   randomize: {rot: 5, pos: [0, 0.01, 0]}
 - object_id: ycb/025_mug
-  xyz: [0.0, 0.02, 0.0]
+  xyz: [0.01, 0.02, 0.0]
   rpy: [0, 0, 0]
   randomize: {rot: 30, pos: [0.01, 0.01, 0]}
