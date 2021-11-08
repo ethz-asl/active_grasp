@@ -137,14 +137,18 @@ class GraspController:
         self.create_collision_scene()
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
-        self.moveit.goto(T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee)
-        self.remove_target_collision_object(grasp)
-        rospy.sleep(0.5)  # Wait for the planning scene to be updated
-        self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
-        self.gripper.grasp()
-        self.moveit.gotoL(Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee)
-        rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
-        success = self.gripper.read() > 0.002
+        T_base_approach = T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee
+        success, plan = self.moveit.plan(T_base_approach)
+        if success:
+            self.moveit.execute(plan)
+            self.remove_target_collision_object(grasp)
+            rospy.sleep(0.5)  # Wait for the planning scene to be updated
+            self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
+            self.gripper.grasp()
+            T_base_retreat = Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee
+            self.moveit.gotoL(T_base_retreat)
+            rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
+            success = self.gripper.read() > 0.002
         return "succeeded" if success else "failed"
 
     def create_collision_scene(self):
