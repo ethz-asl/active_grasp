@@ -126,9 +126,9 @@ class NextBestView(MultiViewPolicy):
         u_min, u_max = u.min(), u.max()
         v_min, v_max = v.min(), v.max()
 
-        t_min = self.min_z_dist
-        t_max = corners[2].max()  # TODO This bound might be a bit too short
-        t_step = np.sqrt(3) * voxel_size  # TODO replace with line rasterization
+        t_min = 0.0  # self.min_z_dist
+        t_max = corners[2].max()  # This bound might be a bit too short
+        t_step = np.sqrt(3) * voxel_size  # Could be replaced with line rasterization
 
         # Cast rays from the camera view (we'll work in the task frame from now on)
         view = self.T_task_base * view
@@ -152,8 +152,12 @@ class NextBestView(MultiViewPolicy):
             t_step,
         )
 
-        # Count rear side voxels
-        i, j, k = np.unique(voxel_indices, axis=0).T
+        # Count rear side voxels within the bounding box
+        indices = np.unique(voxel_indices, axis=0)
+        bbox_min = self.T_task_base.apply(self.bbox.min) / voxel_size
+        bbox_max = self.T_task_base.apply(self.bbox.max) / voxel_size
+        mask = np.array([((i > bbox_min) & (i < bbox_max)).all() for i in indices])
+        i, j, k = indices[mask].T
         tsdfs = tsdf_grid[i, j, k]
         ig = np.logical_and(tsdfs > -1.0, tsdfs < 0.0).sum()
 
