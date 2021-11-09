@@ -7,7 +7,9 @@ from active_grasp.bbox import AABBox
 from robot_helpers.bullet import *
 from robot_helpers.model import KDLModel
 from robot_helpers.spatial import Rotation
-from vgn.utils import find_urdfs, load_cfg
+from vgn.perception import UniformTSDFVolume
+from vgn.utils import find_urdfs, load_cfg, view_on_sphere
+from vgn.detection import VGN, select_local_maxima
 
 rospack = rospkg.RosPack()
 pkg_root = Path(rospack.get_path("active_grasp"))
@@ -17,11 +19,12 @@ assets_dir = pkg_root / "assets"
 class Simulation:
     """Robot is placed s.t. world and base frames are the same"""
 
-    def __init__(self, gui, scene_id):
+    def __init__(self, gui, scene_id, vgn_path):
         self.configure_physics_engine(gui, 60, 4)
         self.configure_visualizer()
         self.seed()
         self.load_robot()
+        self.load_vgn(Path(vgn_path))
         self.scene = get_scene(scene_id)
 
     def configure_physics_engine(self, gui, rate, sub_step_count):
@@ -48,13 +51,19 @@ class Simulation:
         )
         self.camera = BtCamera(320, 240, 0.96, 0.01, 1.0, self.arm.uid, 11)
 
+    def load_vgn(self, model_path):
+        self.vgn = VGN(model_path)
+
     def reset(self):
-        self.set_arm_configuration([0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79])
-        self.scene.clear()
-        q = self.scene.generate(self.rng)
-        self.set_arm_configuration(q)
-        uid = self.select_target()
-        bbox = self.get_target_bbox(uid)
+        valid = False
+        while not valid:
+            self.set_arm_configuration([0.0, -1.39, 0.0, -2.36, 0.0, 1.57, 0.79])
+            self.scene.clear()
+            q = self.scene.generate(self.rng)
+            self.set_arm_configuration(q)
+            uid = self.select_target()
+            bbox = self.get_target_bbox(uid)
+            valid = self.check_for_grasps(bbox)
         return bbox
 
     def set_arm_configuration(self, q):
@@ -76,6 +85,31 @@ class Simulation:
     def get_target_bbox(self, uid):
         aabb_min, aabb_max = p.getAABB(uid)
         return AABBox(aabb_min, aabb_max)
+
+    def check_for_grasps(self, bbox):
+        origin = Transform.t(self.scene.origin)
+        origin.translation[2] -= 0.05
+        center = Transform.t(self.scene.center)
+
+        # First, reconstruct the scene from many views
+        tsdf = UniformTSDFVolume(self.scene.length, 40)
+        r = 2.0 * self.scene.length
+        theta = np.pi / 6.0
+        phis = np.linspace(0.0, 2.0 * np.pi, 5)
+        for view in [view_on_sphere(center, r, theta, phi) for phi in phis]:
+            depth_img = self.camera.get_image(view)[1]
+            tsdf.integrate(depth_img, self.camera.intrinsic, view.inv() * origin)
+        voxel_size, tsdf_grid = tsdf.voxel_size, tsdf.get_grid()
+
+        # Then check whether VGN can find any grasps on the target
+        out = self.vgn.predict(tsdf_grid)
+        grasps, _ = select_local_maxima(voxel_size, out, threshold=0.9)
+        for grasp in grasps:
+            pose = origin * grasp.pose
+            tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
+            if bbox.is_inside(tip):
+                return True
+        return False
 
     def step(self):
         p.stepSimulation()

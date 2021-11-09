@@ -23,7 +23,8 @@ class BtSimNode:
     def __init__(self):
         gui = rospy.get_param("~gui")
         scene_id = rospy.get_param("~scene")
-        self.sim = Simulation(gui=gui, scene_id=scene_id)
+        vgn_path = rospy.get_param("vgn/model")
+        self.sim = Simulation(gui, scene_id, vgn_path)
         self.init_plugins()
         self.advertise_services()
 
