@@ -131,7 +131,7 @@ class PhysicsPlugin(Plugin):
 
 
 class JointStatePlugin(Plugin):
-    def __init__(self, arm, gripper, rate=60):
+    def __init__(self, arm, gripper, rate=30):
         super().__init__(rate)
         self.arm = arm
         self.gripper = gripper
