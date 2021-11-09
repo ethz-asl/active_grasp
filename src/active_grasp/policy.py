@@ -87,7 +87,6 @@ class Policy:
         filtered_grasps, filtered_qualities = [], []
         for grasp, quality in zip(grasps, qualities):
             pose = self.T_base_task * grasp.pose
-            R, t = pose.rotation, pose.translation
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation
             if self.bbox.is_inside(tip):
                 grasp.pose = pose
