@@ -151,7 +151,9 @@ class GraspController:
             self.moveit.gotoL(T_base_retreat)
             rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
             success = self.gripper.read() > 0.002
-        return "succeeded" if success else "failed"
+            return "succeeded" if success else "failed"
+        else:
+            return "no_motion_plan_found"
 
     def create_collision_scene(self):
         # Segment support surface
