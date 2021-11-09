@@ -141,10 +141,11 @@ class GraspController:
         T_base_approach = T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee
         success, plan = self.moveit.plan(T_base_approach, 0.2, 0.2)
         if success:
-            self.remove_target_collision_object(grasp)
+            self.moveit.scene.clear()
             self.moveit.execute(plan)
             rospy.sleep(0.5)  # Wait for the planning scene to be updated
             self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
+            rospy.sleep(0.5)
             self.gripper.grasp()
             T_base_retreat = Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee
             self.moveit.gotoL(T_base_retreat)
@@ -184,15 +185,6 @@ class GraspController:
         frame, pose = self.base_frame, Transform.identity()
         co = create_collision_object_from_mesh(name, frame, pose, mesh)
         self.moveit.scene.add_object(co)
-
-    def remove_target_collision_object(self, grasp):
-        label, min_dist = None, np.inf
-        for i, hull in enumerate(self.hulls):
-            tip = grasp.pose.apply([0.0, 0.0, 0.05])
-            dist = trimesh.proximity.closest_point_naive(hull, np.array([tip]))[1]
-            if dist < min_dist:
-                label, min_dist = i, dist
-        self.moveit.scene.remove_world_object(f"object_{label}")
 
     def postprocess(self, T_base_grasp):
         rot = T_base_grasp.rotation
