@@ -3,6 +3,7 @@ import copy
 import cv_bridge
 from geometry_msgs.msg import Twist
 import numpy as np
+import open3d as o3d
 import rospy
 from sensor_msgs.msg import Image
 import trimesh
@@ -158,12 +159,13 @@ class GraspController:
         _, inliers = cloud.segment_plane(0.01, 3, 1000)
         support_cloud = cloud.select_by_index(inliers)
         cloud = cloud.select_by_index(inliers, invert=True)
+        # o3d.io.write_point_cloud(f"{time.time():.0f}.pcd", cloud)
 
         # Add collision object for the support
         self.add_collision_mesh("support", compute_convex_hull(support_cloud))
 
         # Cluster cloud
-        labels = np.array(cloud.cluster_dbscan(eps=0.02, min_points=10))
+        labels = np.array(cloud.cluster_dbscan(eps=0.01, min_points=8))
 
         # Generate convex collision objects for each segment
         self.hulls = []
