@@ -141,8 +141,8 @@ class GraspController:
         T_base_approach = T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee
         success, plan = self.moveit.plan(T_base_approach, 0.2, 0.2)
         if success:
-            self.moveit.execute(plan)
             self.remove_target_collision_object(grasp)
+            self.moveit.execute(plan)
             rospy.sleep(0.5)  # Wait for the planning scene to be updated
             self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
             self.gripper.grasp()
