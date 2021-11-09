@@ -2,7 +2,7 @@ bt_sim:
   gui: False
   cam_noise: False
   gripper_force: 10
-  scene: scene2.yaml
+  scene: random
 
 grasp_controller:
   base_frame_id: panda_link0
@@ -26,4 +26,4 @@ policy:
 
 nbv_grasp:
   max_views: 40
-  min_gain: 0.0
+  min_gain: 10
