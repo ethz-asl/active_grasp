@@ -10,6 +10,7 @@ from robot_helpers.spatial import Rotation
 from vgn.perception import UniformTSDFVolume
 from vgn.utils import find_urdfs, load_cfg, view_on_sphere
 from vgn.detection import VGN, select_local_maxima
+import vgn.visualizer as vis
 
 rospack = rospkg.RosPack()
 pkg_root = Path(rospack.get_path("active_grasp"))
@@ -94,7 +95,7 @@ class Simulation:
         # First, reconstruct the scene from many views
         tsdf = UniformTSDFVolume(self.scene.length, 40)
         r = 2.0 * self.scene.length
-        theta = np.pi / 6.0
+        theta = np.pi / 4.0
         phis = np.linspace(0.0, 2.0 * np.pi, 5)
         for view in [view_on_sphere(center, r, theta, phi) for phi in phis]:
             depth_img = self.camera.get_image(view)[1]
@@ -103,7 +104,12 @@ class Simulation:
 
         # Then check whether VGN can find any grasps on the target
         out = self.vgn.predict(tsdf_grid)
-        grasps, _ = select_local_maxima(voxel_size, out, threshold=0.9)
+        grasps, qualities = select_local_maxima(voxel_size, out, threshold=0.9)
+
+        # vis.scene_cloud(voxel_size, tsdf.get_scene_cloud())
+        # vis.grasps(grasps, qualities, 0.05)
+        # vis.show()
+
         for grasp in grasps:
             pose = origin * grasp.pose
             tip = pose.rotation.apply([0, 0, 0.05]) + pose.translation

@@ -6,7 +6,8 @@ def main():
     scene_id = "random"
     vgn_path = "../vgn/assets/models/vgn_conv.pth"
     sim = Simulation(gui, scene_id, vgn_path)
-    bbox = sim.reset()
+    while True:
+        sim.reset()
 
 
 if __name__ == "__main__":
