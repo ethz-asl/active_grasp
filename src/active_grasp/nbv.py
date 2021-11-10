@@ -90,11 +90,7 @@ class NextBestView(MultiViewPolicy):
             t = (self.T_task_base * self.best_grasp.pose).translation
             i, j, k = (t / self.tsdf.voxel_size).astype(int)
             qs = self.qual_hist[:, i, j, k]
-            if (
-                np.count_nonzero(qs) == self.T
-                and np.mean(qs) > 0.9
-                and np.std(qs) < 0.05
-            ):
+            if np.count_nonzero(qs) == self.T and np.mean(qs) > 0.9:
                 return True
         return False
 
