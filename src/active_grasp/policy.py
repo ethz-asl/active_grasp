@@ -54,9 +54,9 @@ class Policy:
 
         self.bbox = bbox
         self.view_sphere = view_sphere
-        self.vis.bbox(self.base_frame, self.bbox)
 
         self.calibrate_task_frame()
+        self.vis.bbox(self.base_frame, self.bbox)
 
         self.tsdf = UniformTSDFVolume(0.3, 40)
         self.vgn = VGN(Path(rospy.get_param("vgn/model")))
