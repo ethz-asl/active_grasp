@@ -131,7 +131,7 @@ class GraspController:
         scale = np.linalg.norm(linear) + 1e-6
         linear *= np.clip(scale, 0.0, self.linear_vel) / scale
         angular = self.view_sphere.get_view(theta, phi).rotation * x.rotation.inv()
-        angular = 0.5 * angular.as_rotvec()
+        angular = 1.0 * angular.as_rotvec()
         return np.r_[linear, angular]
 
     def execute_grasp(self, grasp):
