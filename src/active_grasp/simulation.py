@@ -175,7 +175,7 @@ class YamlScene(Scene):
             scale = object.get("scale", 1)
             if randomize := object.get("randomize", False):
                 angle = rng.uniform(-randomize["rot"], randomize["rot"])
-                ori *= Rotation.from_euler("z", angle, degrees=True)
+                ori = Rotation.from_euler("z", angle, degrees=True) * ori
                 b = np.asarray(randomize["pos"])
                 pos += rng.uniform(-b, b)
             self.add_object(urdf, ori, pos, scale)
