@@ -10,7 +10,8 @@ from robot_helpers.spatial import Rotation
 from vgn.perception import UniformTSDFVolume
 from vgn.utils import find_urdfs, load_cfg, view_on_sphere
 from vgn.detection import VGN, select_local_maxima
-import vgn.visualizer as vis
+
+# import vgn.visualizer as vis
 
 rospack = rospkg.RosPack()
 pkg_root = Path(rospack.get_path("active_grasp"))
