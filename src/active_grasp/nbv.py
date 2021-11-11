@@ -80,7 +80,7 @@ class NextBestView(MultiViewPolicy):
             i = np.argmax(utilities)
             nbv, gain = views[i], gains[i]
 
-            if gain < self.min_gain:
+            if gain < self.min_gain and len(self.views) > self.T:
                 self.done = True
 
             self.x_d = nbv
