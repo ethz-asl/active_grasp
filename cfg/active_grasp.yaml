@@ -21,9 +21,9 @@ vgn:
   qual_threshold: 0.9
 
 policy:
-  rate: 2
-  window_size: 6
+  rate: 4
+  window_size: 12
 
 nbv_grasp:
-  max_views: 40
+  max_views: 80
   min_gain: 10
