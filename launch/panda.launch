@@ -10,6 +10,7 @@
   </include>
 
   <!-- Controllers -->
+  <rosparam command="load" file="$(find panda_controllers)/config/controllers.yaml" />
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped position_joint_trajectory_controller cartesian_velocity_controller"/>
 
   <!-- Camera -->
