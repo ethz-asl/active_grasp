@@ -3,11 +3,9 @@ import copy
 import cv_bridge
 from geometry_msgs.msg import Twist
 import numpy as np
-import open3d as o3d
 import rospy
 from sensor_msgs.msg import Image
 import trimesh
-import time
 
 from .bbox import from_bbox_msg
 from .timer import Timer
