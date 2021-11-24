@@ -48,7 +48,8 @@ class GraspController:
     def init_robot_connection(self):
         self.arm = PandaArmClient()
         self.gripper = PandaGripperClient()
-        self.cartesian_vel_pub = rospy.Publisher("command", Twist, queue_size=10)
+        topic = rospy.get_param("cartesian_velocity_controller/topic")
+        self.cartesian_vel_pub = rospy.Publisher(topic, Twist, queue_size=10)
 
     def init_moveit(self):
         self.moveit = MoveItClient("panda_arm")

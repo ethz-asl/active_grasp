@@ -15,6 +15,9 @@ grasp_controller:
     depth_topic: /camera/depth/image_rect_raw
     min_z_dist: 0.3
 
+cartesian_velocity_controller:
+  topic: /cartesian_velocity_controller/set_command
+
 vgn:
   model: $(find vgn)/assets/models/vgn_conv.pth
   finger_depth: 0.05

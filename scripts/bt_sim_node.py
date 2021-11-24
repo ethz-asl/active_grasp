@@ -156,7 +156,8 @@ class CartesianVelocityControllerPlugin(Plugin):
         super().__init__(rate)
         self.arm = arm
         self.model = model
-        rospy.Subscriber("command", Twist, self.target_cb)
+        topic = rospy.get_param("cartesian_velocity_controller/topic")
+        rospy.Subscriber(topic, Twist, self.target_cb)
 
     def target_cb(self, msg):
         self.dx_d = from_twist_msg(msg)
