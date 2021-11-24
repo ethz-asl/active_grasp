@@ -3,11 +3,28 @@
   <arg name="robot_ip" default="172.16.0.2" />
   <arg name="load_gripper" default="true" />
 
+  <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/franka/panda_arm_hand.urdf.xacro" />
+
   <!-- Panda control nodes -->
-  <include file="$(find franka_control)/launch/franka_control.launch">
+  <node name="franka_control" pkg="franka_control" type="franka_control_node" output="screen" required="true">
+    <rosparam command="load" file="$(find franka_control)/config/franka_control_node.yaml" />
+    <param name="robot_ip" value="$(arg robot_ip)" />
+  </node>
+
+  <include file="$(find franka_gripper)/launch/franka_gripper.launch" if="$(arg load_gripper)">
     <arg name="robot_ip" value="$(arg robot_ip)" />
-    <arg name="load_gripper" value="$(arg load_gripper)" />
   </include>
+
+  <rosparam command="load" file="$(find franka_control)/config/default_controllers.yaml" />
+
+  <!-- State publisher -->
+  <node name="state_controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="franka_state_controller"/>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen"/>
+
+  <node name="joint_state_publisher" type="joint_state_publisher" pkg="joint_state_publisher" output="screen">
+    <rosparam param="source_list">[franka_state_controller/joint_states, franka_gripper/joint_states] </rosparam>
+    <param name="rate" value="30"/>
+  </node>
 
   <!-- Controllers -->
   <rosparam command="load" file="$(find panda_controllers)/config/controllers.yaml" />
@@ -18,8 +35,5 @@
     <arg name="enable_pointcloud" value="true" />
     <arg name="publish_tf" value="false" />
   </include>
-
-  <!-- Hand-eye calibration -->
-  <node pkg="tf2_ros" type="static_transform_publisher" name="to_camera" args="0.108, -0.019, 0.052 0.000, 0.000, 0.720, 0.694 panda_hand camera_depth_optical_frame" />
 
 </launch>
