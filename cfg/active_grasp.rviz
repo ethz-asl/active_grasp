@@ -88,6 +88,8 @@ Visualization Manager:
           Value: false
         panda_rightfinger:
           Value: false
+        task:
+          Value: false
         world:
           Value: false
       Marker Alpha: 1
@@ -377,7 +379,7 @@ Visualization Manager:
       Marker Topic: visualization_marker_array
       Name: Markers
       Namespaces:
-        {}
+        bbox: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -496,7 +498,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.399999976158142
+      Distance: 1.2000000476837158
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -504,7 +506,7 @@ Visualization Manager:
         Value: false
       Field of View: 0.7799999713897705
       Focal Point:
-        X: 0.5
+        X: 0.44999998807907104
         Y: 0
         Z: 0.4000000059604645
       Focal Shape Fixed Size: false
@@ -515,7 +517,27 @@ Visualization Manager:
       Pitch: 0.25999999046325684
       Target Frame: <Fixed Frame>
       Yaw: 1.0399999618530273
-    Saved: ~
+    Saved:
+      - Class: rviz/Orbit
+        Distance: 1.2000000476837158
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.05999999865889549
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Field of View: 0.7799999713897705
+        Focal Point:
+          X: 0.44999998807907104
+          Y: 0
+          Z: 0.4000000059604645
+        Focal Shape Fixed Size: false
+        Focal Shape Size: 0.05000000074505806
+        Invert Z Axis: false
+        Name: Panda
+        Near Clip Distance: 0.009999999776482582
+        Pitch: 0.25999999046325684
+        Target Frame: <Fixed Frame>
+        Yaw: 1.0399999618530273
 Window Geometry:
   ColorImage:
     collapsed: false
