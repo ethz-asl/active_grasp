@@ -30,10 +30,4 @@
   <rosparam command="load" file="$(find panda_controllers)/config/controllers.yaml" />
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="--stopped position_joint_trajectory_controller cartesian_velocity_controller"/>
 
-  <!-- Camera -->
-  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
-    <arg name="enable_pointcloud" value="true" />
-    <arg name="publish_tf" value="false" />
-  </include>
-
 </launch>

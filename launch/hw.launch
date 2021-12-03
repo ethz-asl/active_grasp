@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <!-- Panda -->
+  <include file="$(find active_grasp)/launch/panda.launch" />
+
+  <!-- Camera -->
+  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+    <arg name="enable_pointcloud" value="true" />
+    <arg name="publish_tf" value="false" />
+  </include>
+
+</launch>
