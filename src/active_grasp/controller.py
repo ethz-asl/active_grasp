@@ -59,12 +59,14 @@ class GraspController:
         req = SwitchControllerRequest()
         req.start_controllers = ["cartesian_velocity_controller"]
         req.stop_controllers = ["position_joint_trajectory_controller"]
+        req.strictness = 1
         self.switch_controller(req)
 
     def switch_to_joint_trajectory_control(self):
         req = SwitchControllerRequest()
         req.start_controllers = ["position_joint_trajectory_controller"]
         req.stop_controllers = ["cartesian_velocity_controller"]
+        req.strictness = 1
         self.switch_controller(req)
 
     def init_camera_stream(self):
