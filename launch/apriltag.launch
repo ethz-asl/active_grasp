@@ -11,7 +11,7 @@
 
   <!-- AprilTag -->
   <node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="apriltag_ros" clear_params="true" output="screen">
-    <rosparam command="load" file="$(find active_grasp)/cfg/apriltag.yaml" />
+    <rosparam command="load" file="$(find active_grasp)/cfg/hw/apriltag.yaml" />
     <remap from="image_rect" to="/camera/infra1/image_rect_raw" />
     <remap from="camera_info" to="/camera/infra1/camera_info" />
     <param name="camera_frame" type="str" value="camera_depth_optical_frame" />
