@@ -1,13 +1,6 @@
 <launch>
-  <!-- Panda -->
-  <include file="$(find active_grasp)/launch/panda.launch" />
-
-  <!-- Camera -->
-  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
-    <arg name="enable_pointcloud" value="true" />
-    <arg name="enable_infra1" value="true" />
-    <arg name="publish_tf" value="false" />
-  </include>
+  <!-- Robot and camera drivers -->
+  <include file="$(find active_grasp)/launch/hw.launch" />
 
   <!-- AprilTag -->
   <node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="apriltag_ros" clear_params="true" output="screen">
