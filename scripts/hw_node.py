@@ -25,6 +25,7 @@ class HwNode:
         self.scene_config = load_yaml(cfg["scene_file"])
 
     def init_robot_connection(self):
+        self.gripper = PandaGripperClient()
         self.switch_to_joint_trajectory_controller = rospy.ServiceProxy(
             "controller_manager/switch_controller", SwitchController
         )
@@ -39,6 +40,8 @@ class HwNode:
         return SeedResponse()
 
     def reset(self, req):
+        self.gripper.move(0.04)
+
         # Move to the initial configuration
         self.switch_to_joint_trajectory_controller()
         self.moveit.goto(self.scene_config["q0"])
