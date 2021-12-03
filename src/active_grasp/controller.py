@@ -112,7 +112,7 @@ class GraspController:
     def get_state(self):
         q, _ = self.arm.get_state()
         msg = copy.deepcopy(self.latest_depth_msg)
-        img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
+        img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32) * 0.001
         pose = tf.lookup(self.base_frame, self.cam_frame, msg.header.stamp)
         return img, pose, q
 

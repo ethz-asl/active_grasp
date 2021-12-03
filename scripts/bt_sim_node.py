@@ -317,7 +317,7 @@ class CameraPlugin(Plugin):
         if self.cam_noise:
             depth = apply_noise(depth)
 
-        msg = self.cv_bridge.cv2_to_imgmsg(depth)
+        msg = self.cv_bridge.cv2_to_imgmsg((1000 * depth).astype(np.uint16))
         msg.header.stamp = stamp
         self.depth_pub.publish(msg)
 
