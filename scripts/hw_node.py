@@ -40,11 +40,10 @@ class HwNode:
         return SeedResponse()
 
     def reset(self, req):
-        self.gripper.move(0.04)
-
         # Move to the initial configuration
         self.switch_to_joint_trajectory_controller()
         self.moveit.goto(self.scene_config["q0"])
+        self.gripper.move(0.04)
 
         # Construct bounding box
         bbox_min = self.T_base_roi.apply(self.scene_config["target"]["min"])
