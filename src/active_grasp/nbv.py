@@ -56,9 +56,30 @@ def raycast(
 class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
+        self.compile()
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
         self.max_views = rospy.get_param("nbv_grasp/max_views")
         self.min_gain = rospy.get_param("nbv_grasp/min_gain")
+
+    def compile(self):
+        # Trigger the JIT compilation
+        raycast(
+            1.0,
+            np.zeros((40, 40, 40), dtype=np.float32),
+            np.eye(3),
+            np.zeros(3),
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0,
+            1,
+            0,
+            1,
+            0.0,
+            1.0,
+            0.1,
+        )
 
     def activate(self, bbox, view_sphere):
         super().activate(bbox, view_sphere)
