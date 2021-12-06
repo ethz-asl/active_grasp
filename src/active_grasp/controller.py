@@ -87,7 +87,6 @@ class GraspController:
                 res = self.execute_grasp(grasp)
         else:
             res = "aborted"
-        self.gripper.move(0.04)
         return self.collect_info(res)
 
     def reset(self):

@@ -28,6 +28,12 @@ def main():
     rospy.sleep(1.0)  # Prevents a rare race condiion
 
     for _ in tqdm(range(args.runs)):
+        if args.wait_for_input:
+            controller.gripper.move(0.08)
+            controller.switch_to_joint_trajectory_control()
+            controller.moveit.goto("ready")
+            input("Press Enter to continue...")
+            rospy.loginfo("Running policy ...")
         info = controller.run()
         logger.log_run(info)
 
@@ -35,7 +41,8 @@ def main():
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("policy", type=str, choices=registry.keys())
-    parser.add_argument("--runs", type=int, default=1)
+    parser.add_argument("--runs", type=int, default=10)
+    parser.add_argument("--wait-for-input", action="store_true")
     parser.add_argument("--logdir", type=Path, default="logs")
     parser.add_argument("--seed", type=int, default=1)
     return parser
