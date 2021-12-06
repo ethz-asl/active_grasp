@@ -63,7 +63,7 @@ class NextBestView(MultiViewPolicy):
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
         self.max_views = rospy.get_param("nbv_grasp/max_views")
         self.min_gain = rospy.get_param("nbv_grasp/min_gain")
-        self.downsample = rospy.get_param("nbv/downsample")
+        self.downsample = rospy.get_param("nbv_grasp/downsample")
 
     def compile(self):
         # Trigger the JIT compilation
