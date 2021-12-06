@@ -32,7 +32,9 @@ def main():
             controller.gripper.move(0.08)
             controller.switch_to_joint_trajectory_control()
             controller.moveit.goto("ready")
-            input("Press Enter to continue...")
+            i = input("Run policy? [y/n] ")
+            if i != "y":
+                exit()
             rospy.loginfo("Running policy ...")
         info = controller.run()
         logger.log_run(info)
