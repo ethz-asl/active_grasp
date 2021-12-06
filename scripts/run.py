@@ -27,7 +27,7 @@ def main():
     seed_simulation(args.seed)
     rospy.sleep(1.0)  # Prevents a rare race condiion
 
-    for _ in tqdm(range(args.runs)):
+    for _ in tqdm(range(args.runs), disable=args.wait_for_input):
         if args.wait_for_input:
             controller.gripper.move(0.08)
             controller.switch_to_joint_trajectory_control()

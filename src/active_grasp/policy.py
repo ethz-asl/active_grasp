@@ -96,6 +96,9 @@ class Policy:
                     filtered_qualities.append(quality)
         return filtered_grasps, filtered_qualities
 
+    def deactivate(self):
+        self.vis.clear_ig_views()
+
 
 def select_best_grasp(grasps, qualities):
     i = np.argmax(qualities)

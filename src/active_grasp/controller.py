@@ -107,6 +107,7 @@ class GraspController:
             r.sleep()
         rospy.sleep(0.1)  # Wait for a zero command to be sent to the robot.
         timer.shutdown()
+        self.policy.deactivate()
         return self.policy.best_grasp
 
     def get_state(self):
