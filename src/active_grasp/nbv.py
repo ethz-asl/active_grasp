@@ -56,14 +56,11 @@ def raycast(
 class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
-        self.load_parameters()
-        self.compile()
-
-    def load_parameters(self):
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
         self.max_views = rospy.get_param("nbv_grasp/max_views")
         self.min_gain = rospy.get_param("nbv_grasp/min_gain")
         self.downsample = rospy.get_param("nbv_grasp/downsample")
+        self.compile()
 
     def compile(self):
         # Trigger the JIT compilation
