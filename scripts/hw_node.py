@@ -41,7 +41,8 @@ class HwNode:
         rospy.Service("reset", Reset, self.reset)
 
     def seed(self, req):
-        # Nothing to do
+        self.rng = np.random.default_rng(req.seed)
+        rospy.loginfo(f"Seeded the rng with {req.seed}.")
         return SeedResponse()
 
     def reset(self, req):
@@ -49,6 +50,7 @@ class HwNode:
 
         # Move to the initial configuration
         self.switch_to_joint_trajectory_controller()
+        q0 += self.rng.uniform(-0.069, 0.069, 7)
         self.moveit.goto(q0, velocity_scaling=0.4)
         self.gripper.move(0.08)
 
