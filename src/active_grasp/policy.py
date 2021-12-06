@@ -136,6 +136,7 @@ class MultiViewPolicy(Policy):
     def integrate(self, img, x, q):
         self.views.append(x)
         self.vis.path(self.base_frame, self.views)
+        self.vis.views(self.base_frame, self.intrinsic, self.views[::4])
 
         with Timer("tsdf_integration"):
             self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
