@@ -31,7 +31,7 @@ def main():
         if args.wait_for_input:
             controller.gripper.move(0.08)
             controller.switch_to_joint_trajectory_control()
-            controller.moveit.goto("ready")
+            controller.moveit.goto("ready", velocity_scaling=0.2)
             i = input("Run policy? [y/n] ")
             if i != "y":
                 exit()
