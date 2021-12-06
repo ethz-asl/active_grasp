@@ -104,6 +104,9 @@ class NextBestView(MultiViewPolicy):
             if gain < self.min_gain and len(self.views) > self.T:
                 self.done = True
 
+            if self.done:
+                self.vis.clear_ig_views()
+
             self.x_d = nbv
 
     def best_grasp_prediction_is_stable(self):

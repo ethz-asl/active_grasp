@@ -13,6 +13,10 @@ grey = [0.9, 0.9, 0.9]
 
 
 class Visualizer(vgn.rviz.Visualizer):
+    def clear_ig_views(self):
+        markers = [Marker(action=Marker.DELETE, ns="ig_views", id=i) for i in range(24)]
+        self.draw(markers)
+
     def bbox(self, frame, bbox):
         pose = Transform.identity()
         scale = [0.004, 0.0, 0.0]
