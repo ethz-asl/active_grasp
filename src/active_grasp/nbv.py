@@ -136,8 +136,6 @@ class NextBestView(MultiViewPolicy):
         cx = self.intrinsic.cx / downsample
         cy = self.intrinsic.cy / downsample
 
-        print(fx)
-
         # Project bbox onto the image plane to get better bounds
         T_cam_base = view.inv()
         corners = np.array([T_cam_base.apply(p) for p in self.bbox.corners]).T
