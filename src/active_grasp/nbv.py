@@ -56,10 +56,14 @@ def raycast(
 class NextBestView(MultiViewPolicy):
     def __init__(self):
         super().__init__()
+        self.load_parameters()
         self.compile()
+
+    def load_parameters(self):
         self.min_z_dist = rospy.get_param("~camera/min_z_dist")
         self.max_views = rospy.get_param("nbv_grasp/max_views")
         self.min_gain = rospy.get_param("nbv_grasp/min_gain")
+        self.downsample = rospy.get_param("nbv/downsample")
 
     def compile(self):
         # Trigger the JIT compilation
@@ -93,7 +97,7 @@ class NextBestView(MultiViewPolicy):
             with Timer("view_generation"):
                 views = self.generate_views(q)
             with Timer("ig_computation"):
-                gains = [self.ig_fn(v, 10) for v in views]
+                gains = [self.ig_fn(v, self.downsample) for v in views]
             with Timer("cost_computation"):
                 costs = [self.cost_fn(v) for v in views]
             utilities = gains / np.sum(gains) - costs / np.sum(costs)
@@ -134,6 +138,8 @@ class NextBestView(MultiViewPolicy):
         fy = self.intrinsic.fy / downsample
         cx = self.intrinsic.cx / downsample
         cy = self.intrinsic.cy / downsample
+
+        print(fx)
 
         # Project bbox onto the image plane to get better bounds
         T_cam_base = view.inv()
