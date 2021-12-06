@@ -49,7 +49,7 @@ class HwNode:
 
         # Move to the initial configuration
         self.switch_to_joint_trajectory_controller()
-        self.moveit.goto(q0, velocity_scaling=0.2)
+        self.moveit.goto(q0, velocity_scaling=0.4)
         self.gripper.move(0.08)
 
         return ResetResponse(to_bbox_msg(bbox))
