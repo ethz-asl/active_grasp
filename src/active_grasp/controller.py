@@ -59,12 +59,14 @@ class GraspController:
         req = SwitchControllerRequest()
         req.start_controllers = ["cartesian_velocity_controller"]
         req.stop_controllers = ["position_joint_trajectory_controller"]
+        req.strictness = 1
         self.switch_controller(req)
 
     def switch_to_joint_trajectory_control(self):
         req = SwitchControllerRequest()
         req.start_controllers = ["position_joint_trajectory_controller"]
         req.stop_controllers = ["cartesian_velocity_controller"]
+        req.strictness = 1
         self.switch_controller(req)
 
     def init_camera_stream(self):
@@ -85,6 +87,7 @@ class GraspController:
                 res = self.execute_grasp(grasp)
         else:
             res = "aborted"
+        self.gripper.move(0.04)
         return self.collect_info(res)
 
     def reset(self):
@@ -110,7 +113,7 @@ class GraspController:
     def get_state(self):
         q, _ = self.arm.get_state()
         msg = copy.deepcopy(self.latest_depth_msg)
-        img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32)
+        img = self.cv_bridge.imgmsg_to_cv2(msg).astype(np.float32) * 0.001
         pose = tf.lookup(self.base_frame, self.cam_frame, msg.header.stamp)
         return img, pose, q
 

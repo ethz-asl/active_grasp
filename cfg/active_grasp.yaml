@@ -4,6 +4,10 @@ bt_sim:
   gripper_force: 10
   scene: random
 
+hw:
+  roi_calib_file: $(find active_grasp)/cfg/hw/T_base_tag.txt
+  scene_file: $(find active_grasp)/cfg/hw/scene01.yaml
+
 grasp_controller:
   base_frame_id: panda_link0
   ee_grasp_offset: [0.0, 0.0, -0.383, 0.924, 0.0, 0.0, 0.065]  # offset to panda_link8

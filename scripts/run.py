@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 from datetime import datetime
 import pandas as pd
@@ -33,7 +35,7 @@ def main():
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("policy", type=str, choices=registry.keys())
-    parser.add_argument("--runs", type=int, default=100)
+    parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--logdir", type=Path, default="logs")
     parser.add_argument("--seed", type=int, default=1)
     return parser

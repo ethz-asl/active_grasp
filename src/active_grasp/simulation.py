@@ -158,7 +158,7 @@ class Scene:
 class YamlScene(Scene):
     def __init__(self, config_name):
         super().__init__()
-        self.config_path = pkg_root / "cfg" / config_name
+        self.config_path = pkg_root / "cfg/sim" / config_name
 
     def load_config(self):
         self.scene = load_cfg(self.config_path)
