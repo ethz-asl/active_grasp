@@ -105,9 +105,9 @@ class GraspController:
             img, pose, q = self.get_state()
             self.policy.update(img, pose, q)
             r.sleep()
-        rospy.sleep(0.1)  # Wait for a zero command to be sent to the robot.
-        timer.shutdown()
+        rospy.sleep(0.2)  # Wait for a zero command to be sent to the robot.
         self.policy.deactivate()
+        timer.shutdown()
         return self.policy.best_grasp
 
     def get_state(self):
