@@ -27,7 +27,7 @@ class HwNode:
 
     def init_robot_connection(self):
         self.gripper = PandaGripperClient()
-        self.switch_to_joint_trajectory_controller = rospy.ServiceProxy(
+        self.switch_controller = rospy.ServiceProxy(
             "controller_manager/switch_controller", SwitchController
         )
         self.moveit = MoveItClient("panda_arm")
@@ -50,7 +50,7 @@ class HwNode:
         # Move to the initial configuration
         self.switch_to_joint_trajectory_controller()
         self.moveit.goto(q0)
-        self.gripper.move(0.04)
+        self.gripper.move(0.08)
 
         return ResetResponse(to_bbox_msg(bbox))
 
