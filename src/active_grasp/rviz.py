@@ -3,11 +3,13 @@ import numpy as np
 from robot_helpers.ros.rviz import *
 from robot_helpers.spatial import Transform
 import vgn.rviz
-from vgn.utils import box_lines
+from vgn.utils import *
+
 
 cm = lambda s: tuple([float(1 - s), float(s), float(0)])
 red = [1.0, 0.0, 0.0]
 blue = [0, 0.6, 1.0]
+grey = [0.9, 0.9, 0.9]
 
 
 class Visualizer(vgn.rviz.Visualizer):
@@ -19,17 +21,26 @@ class Visualizer(vgn.rviz.Visualizer):
         marker = create_line_list_marker(frame, pose, scale, color, lines, "bbox")
         self.draw([marker])
 
-    def rays(self, frame, origin, directions, t_max=1.0):
-        lines = [[origin, origin + t_max * direction] for direction in directions]
-        marker = create_line_list_marker(
-            frame,
-            Transform.identity(),
-            [0.001, 0.0, 0.0],
-            [0.9, 0.9, 0.9],
-            lines,
-            "rays",
-        )
-        self.draw([marker])
+    def ig_views(self, frame, intrinsic, views, values):
+        vmin, vmax = min(values), max(values)
+        scale = [0.002, 0.0, 0.0]
+        near, far = 0.0, 0.02
+        markers = []
+        for i, (view, value) in enumerate(zip(views, values)):
+            color = cm((value - vmin) / (vmax - vmin))
+            marker = create_view_marker(
+                frame,
+                view,
+                scale,
+                color,
+                intrinsic,
+                near,
+                far,
+                ns="ig_views",
+                id=i,
+            )
+            markers.append(marker)
+        self.draw(markers)
 
     def path(self, frame, poses):
         color = blue
@@ -67,25 +78,34 @@ class Visualizer(vgn.rviz.Visualizer):
         )
         self.draw([marker])
 
-    def views(self, frame, intrinsic, views, values):
-        vmin, vmax = min(values), max(values)
-        scale = [0.002, 0.0, 0.0]
-        near, far = 0.0, 0.02
+    def rays(self, frame, origin, directions, t_max=1.0):
+        lines = [[origin, origin + t_max * direction] for direction in directions]
+        marker = create_line_list_marker(
+            frame,
+            Transform.identity(),
+            [0.001, 0.0, 0.0],
+            grey,
+            lines,
+            "rays",
+        )
+        self.draw([marker])
+
+    def views(self, frame, intrinsic, views):
         markers = []
-        for i, (view, value) in enumerate(zip(views, values)):
-            color = cm((value - vmin) / (vmax - vmin))
-            marker = create_view_marker(
-                frame,
-                view,
-                scale,
-                color,
-                intrinsic,
-                near,
-                far,
-                ns="views",
-                id=i,
+        for i, view in enumerate(views):
+            markers.append(
+                create_view_marker(
+                    frame,
+                    view,
+                    [0.002, 0.0, 0.0],
+                    blue,
+                    intrinsic,
+                    0.0,
+                    0.02,
+                    ns="views",
+                    id=i,
+                )
             )
-            markers.append(marker)
         self.draw(markers)
 
 
