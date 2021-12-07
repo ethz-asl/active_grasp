@@ -46,30 +46,48 @@ class Visualizer(vgn.rviz.Visualizer):
             markers.append(marker)
         self.draw(markers)
 
-    def path(self, frame, poses):
-        color = blue
-        points = [p.translation for p in poses]
+    def path(self, frame, intrinsic, views):
+        markers = []
+        points = [p.translation for p in views]
+
         spheres = create_sphere_list_marker(
             frame,
             Transform.identity(),
-            np.full(3, 0.01),
-            color,
+            np.full(3, 0.008),
+            blue,
             points,
             "path",
             0,
         )
-        markers = [spheres]
-        if len(poses) > 1:
+        markers.append(spheres)
+
+        if len(views) > 1:
             lines = create_line_strip_marker(
                 frame,
                 Transform.identity(),
-                [0.005, 0.0, 0.0],
-                color,
+                [0.002, 0.0, 0.0],
+                blue,
                 points,
                 "path",
                 1,
             )
             markers.append(lines)
+
+        for i, view in enumerate(views[::4]):
+            markers.append(
+                create_view_marker(
+                    frame,
+                    view,
+                    [0.002, 0.0, 0.0],
+                    blue,
+                    intrinsic,
+                    0.0,
+                    0.02,
+                    ns="views",
+                    id=i,
+                )
+            )
+
         self.draw(markers)
 
     def point(self, frame, point):
@@ -93,24 +111,6 @@ class Visualizer(vgn.rviz.Visualizer):
             "rays",
         )
         self.draw([marker])
-
-    def views(self, frame, intrinsic, views):
-        markers = []
-        for i, view in enumerate(views):
-            markers.append(
-                create_view_marker(
-                    frame,
-                    view,
-                    [0.002, 0.0, 0.0],
-                    blue,
-                    intrinsic,
-                    0.0,
-                    0.02,
-                    ns="views",
-                    id=i,
-                )
-            )
-        self.draw(markers)
 
 
 def create_view_marker(frame, pose, scale, color, intrinsic, near, far, ns="", id=0):
