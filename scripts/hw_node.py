@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from controller_manager_msgs.srv import *
+import geometry_msgs.msg
 import numpy as np
 import rospy
 
@@ -8,6 +9,7 @@ from active_grasp.bbox import AABBox, to_bbox_msg
 from active_grasp.rviz import Visualizer
 from active_grasp.srv import *
 from robot_helpers.io import load_yaml
+from robot_helpers.ros.conversions import to_pose_msg
 from robot_helpers.ros.moveit import MoveItClient
 from robot_helpers.ros.panda import PandaGripperClient
 from robot_helpers.spatial import Transform
@@ -31,6 +33,7 @@ class HwNode:
             "controller_manager/switch_controller", SwitchController
         )
         self.moveit = MoveItClient("panda_arm")
+        rospy.Timer(rospy.Duration(1), self.publish_table_co)
 
     def init_visualizer(self):
         self.vis = Visualizer()
@@ -74,6 +77,12 @@ class HwNode:
     def draw_bbox(self, event):
         _, bbox = self.load_config()
         self.vis.bbox("panda_link0", bbox)
+
+    def publish_table_co(self, event):
+        msg = geometry_msgs.msg.PoseStamped()
+        msg.header.frame_id = "panda_link0"
+        msg.pose = to_pose_msg(self.T_base_roi * Transform.t([0.15, 0.15, 0.005]))
+        self.moveit.scene.add_box("table", msg, size=(0.8, 0.8, 0.01))
 
 
 def main():
