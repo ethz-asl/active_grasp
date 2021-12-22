@@ -5,17 +5,18 @@ import rospkg
 
 from active_grasp.bbox import AABBox
 from robot_helpers.bullet import *
+from robot_helpers.io import load_yaml
 from robot_helpers.model import KDLModel
 from robot_helpers.spatial import Rotation
 from vgn.perception import UniformTSDFVolume
-from vgn.utils import find_urdfs, load_cfg, view_on_sphere
+from vgn.utils import find_urdfs, view_on_sphere
 from vgn.detection import VGN, select_local_maxima
 
 # import vgn.visualizer as vis
 
 rospack = rospkg.RosPack()
 pkg_root = Path(rospack.get_path("active_grasp"))
-assets_dir = pkg_root / "assets"
+urdfs_dir = pkg_root / "assets/urdfs"
 
 
 class Simulation:
@@ -45,7 +46,7 @@ class Simulation:
         self.rng = np.random.default_rng(seed) if seed else np.random
 
     def load_robot(self):
-        panda_urdf_path = assets_dir / "franka/panda_arm_hand.urdf"
+        panda_urdf_path = urdfs_dir / "franka/panda_arm_hand.urdf"
         self.arm = BtPandaArm(panda_urdf_path)
         self.gripper = BtPandaGripper(self.arm)
         self.model = KDLModel.from_urdf_file(
@@ -124,7 +125,7 @@ class Simulation:
 
 class Scene:
     def __init__(self):
-        self.support_urdf = assets_dir / "plane/model.urdf"
+        self.support_urdf = urdfs_dir / "plane/model.urdf"
         self.support_uid = -1
         self.object_uids = []
 
@@ -161,7 +162,7 @@ class YamlScene(Scene):
         self.config_path = pkg_root / "cfg/sim" / config_name
 
     def load_config(self):
-        self.scene = load_cfg(self.config_path)
+        self.scene = load_yaml(self.config_path)
         self.center = np.asarray(self.scene["center"])
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
@@ -170,7 +171,7 @@ class YamlScene(Scene):
         self.load_config()
         self.add_support(self.center)
         for object in self.scene["objects"]:
-            urdf = assets_dir / object["object_id"] / "model.urdf"
+            urdf = urdfs_dir / object["object_id"] / "model.urdf"
             ori = Rotation.from_euler("xyz", object["rpy"], degrees=True)
             pos = self.center + np.asarray(object["xyz"])
             scale = object.get("scale", 1)
@@ -191,7 +192,7 @@ class RandomScene(Scene):
         self.center = np.r_[0.5, 0.0, 0.2]
         self.length = 0.3
         self.origin = self.center - np.r_[0.5 * self.length, 0.5 * self.length, 0.0]
-        self.object_urdfs = find_urdfs(assets_dir / "test")
+        self.object_urdfs = find_urdfs(urdfs_dir / "test")
 
     def generate(self, rng, object_count=4, attempts=10):
         self.add_support(self.center)

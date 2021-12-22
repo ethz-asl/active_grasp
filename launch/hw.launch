@@ -3,7 +3,7 @@
   <arg name="robot_ip" default="172.16.0.2" />
   <arg name="load_gripper" default="true" />
 
-  <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/franka/panda_arm_hand.urdf.xacro" />
+  <param name="robot_description" command="$(find xacro)/xacro $(find active_grasp)/assets/franka/urdfs/panda_arm_hand.urdf.xacro" />
 
   <!-- Panda control nodes -->
   <node name="franka_control" pkg="franka_control" type="franka_control_node" output="screen" required="true">
@@ -36,6 +36,4 @@
     <arg name="enable_pointcloud" value="true" />
     <arg name="publish_tf" value="false" />
   </include>
-
-
 </launch>

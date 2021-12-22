@@ -69,7 +69,7 @@ class Policy:
 
     def calibrate_task_frame(self):
         xyz = np.r_[self.bbox.center[:2] - 0.15, self.bbox.min[2] - 0.05]
-        self.T_base_task = Transform.translation(xyz)
+        self.T_base_task = Transform.t(xyz)
         self.T_task_base = self.T_base_task.inv()
         tf.broadcast(self.T_base_task, self.base_frame, self.task_frame)
         rospy.sleep(1.0)  # Wait for tf tree to be updated
