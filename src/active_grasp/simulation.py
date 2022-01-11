@@ -90,9 +90,9 @@ class Simulation:
         return AABBox(aabb_min, aabb_max)
 
     def check_for_grasps(self, bbox):
-        origin = Transform.t(self.scene.origin)
+        origin = Transform.from_translation(self.scene.origin)
         origin.translation[2] -= 0.05
-        center = Transform.t(self.scene.center)
+        center = Transform.from_translation(self.scene.center)
 
         # First, reconstruct the scene from many views
         tsdf = UniformTSDFVolume(self.scene.length, 40)

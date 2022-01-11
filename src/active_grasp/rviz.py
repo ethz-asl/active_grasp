@@ -90,9 +90,13 @@ class Visualizer(vgn.rviz.Visualizer):
 
         self.draw(markers)
 
-    def point(self, frame, point):
+    def point(self, frame, position):
         marker = create_sphere_marker(
-            frame, Transform.t(point), np.full(3, 0.01), [0, 0, 1], "point"
+            frame,
+            Transform.from_translation(position),
+            np.full(3, 0.01),
+            [0, 0, 1],
+            "point",
         )
         self.draw([marker])
 

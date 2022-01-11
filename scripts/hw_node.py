@@ -81,7 +81,7 @@ class HwNode:
     def publish_table_co(self, event):
         msg = geometry_msgs.msg.PoseStamped()
         msg.header.frame_id = "panda_link0"
-        msg.pose = to_pose_msg(self.T_base_roi * Transform.t([0.15, 0.15, 0.005]))
+        msg.pose = to_pose_msg(self.T_base_roi * Transform.t_[0.15, 0.15, 0.005])
         self.moveit.scene.add_box("table", msg, size=(0.8, 0.8, 0.01))
 
 

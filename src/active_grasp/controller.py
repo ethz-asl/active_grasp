@@ -140,7 +140,7 @@ class GraspController:
         self.create_collision_scene()
         T_base_grasp = self.postprocess(grasp.pose)
         self.gripper.move(0.08)
-        T_base_approach = T_base_grasp * Transform.t([0, 0, -0.06]) * self.T_grasp_ee
+        T_base_approach = T_base_grasp * Transform.t_[0, 0, -0.06] * self.T_grasp_ee
         success, plan = self.moveit.plan(T_base_approach, 0.2, 0.2)
         if success:
             self.moveit.scene.clear()
@@ -149,7 +149,7 @@ class GraspController:
             self.moveit.gotoL(T_base_grasp * self.T_grasp_ee)
             rospy.sleep(0.5)
             self.gripper.grasp()
-            T_base_retreat = Transform.t([0, 0, 0.05]) * T_base_grasp * self.T_grasp_ee
+            T_base_retreat = Transform.t_[0, 0, 0.05] * T_base_grasp * self.T_grasp_ee
             self.moveit.gotoL(T_base_retreat)
             rospy.sleep(1.0)  # Wait to see whether the object slides out of the hand
             success = self.gripper.read() > 0.002
@@ -194,7 +194,7 @@ class GraspController:
         rot = T_base_grasp.rotation
         if rot.as_matrix()[:, 0][0] < 0:  # Ensure that the camera is pointing forward
             T_base_grasp.rotation = rot * Rotation.from_euler("z", np.pi)
-        T_base_grasp *= Transform.t([0.0, 0.0, 0.01])
+        T_base_grasp *= Transform.t_[0.0, 0.0, 0.01]
         return T_base_grasp
 
     def collect_info(self, result):
