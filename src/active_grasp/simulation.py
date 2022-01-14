@@ -16,7 +16,7 @@ from vgn.detection import VGN, select_local_maxima
 
 rospack = rospkg.RosPack()
 pkg_root = Path(rospack.get_path("active_grasp"))
-urdfs_dir = pkg_root / "assets/urdfs"
+urdfs_dir = pkg_root / "assets"
 
 
 class Simulation:
