@@ -2,11 +2,7 @@
 
 ## Setup
 
-### Hardware
-
 While the policies are hardware-agnostic, the experiments are designed to work with a Franka Emika Panda and an Intel Realsense D435 attached to the wrist of the robot.
-
-### Software
 
 The code was developed and tested on Ubuntu 20.04 with ROS Noetic. It depends on the following external packages:
 
@@ -31,25 +27,25 @@ Start a roscore.
 roscore
 ```
 
-To run simulated grasping experiments.
+To run simulation experiments.
 
 ```
-# Start the simulated environment
-mon launch active_grasp env.launch sim:=true
+# Start the simulation environment
+roslaunch active_grasp env.launch sim:=true
 
-# Run the grasping experiment
+# Run the experiment
 python3 scripts/run.py nbv
 ```
 
-To run real-robot grasping experiments.
+To run real world experiments.
 
 ```
 # Start the hardware drivers
-mon launch active_grasp hw.launch
+roslaunch active_grasp hw.launch
 
 # Launch the hw environment
-mon launch active_grasp env.launch sim:=false
+roslaunch active_grasp env.launch sim:=false
 
-# Run the grasping experiment
+# Run the experiment
 python3 scripts/run.py nbv --wait-for-input
 ```
