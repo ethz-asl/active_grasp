@@ -4,7 +4,6 @@ import numpy as np
 import rospy
 
 from .policy import MultiViewPolicy
-
 from .timer import Timer
 
 

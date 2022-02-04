@@ -4,13 +4,13 @@ from pathlib import Path
 import rospy
 from trac_ik_python.trac_ik import IK
 
-
-from .timer import Timer
-from .rviz import Visualizer
 from robot_helpers.ros import tf
 from robot_helpers.ros.conversions import *
 from vgn.detection import *
 from vgn.perception import UniformTSDFVolume
+
+from .timer import Timer
+from .rviz import Visualizer
 
 
 def solve_ik(q0, pose, solver):
