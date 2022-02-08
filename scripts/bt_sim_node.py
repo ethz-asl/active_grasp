@@ -294,7 +294,7 @@ class CameraPlugin(Plugin):
         super().__init__(rate)
         self.camera = camera
         self.name = name
-        self.cam_noise = rospy.get_param("~cam_noise", True)
+        self.cam_noise = rospy.get_param("~cam_noise", False)
         self.cv_bridge = cv_bridge.CvBridge()
         self.init_publishers()
 

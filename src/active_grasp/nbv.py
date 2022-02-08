@@ -125,7 +125,7 @@ class NextBestView(MultiViewPolicy):
                 view_candidates.append(view)
         return view_candidates
 
-    def ig_fn(self, view, downsample, vis=False):
+    def ig_fn(self, view, downsample):
         tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
         tsdf_grid = -1.0 + 2.0 * tsdf_grid  # Open3D maps tsdf to [0,1]
 
@@ -177,14 +177,6 @@ class NextBestView(MultiViewPolicy):
         i, j, k = indices[mask].T
         tsdfs = tsdf_grid[i, j, k]
         ig = np.logical_and(tsdfs > -1.0, tsdfs < 0.0).sum()
-
-        if vis:
-            dirs = []
-            for u in range(u_min, u_max):
-                for v in range(v_min, v_max):
-                    d = np.asarray([(u - cx) / fx, (v - cy) / fy, 1.0])
-                    dirs.append(ori @ (d / np.linalg.norm(d)))
-            self.vis.rays(self.task_frame, pos, dirs, t_max)
 
         return ig
 
