@@ -1,7 +1,7 @@
 bt_sim:
   gui: False
   gripper_force: 10
-  scene: mustard.yaml
+  scene: random
 
 hw:
   roi_calib_file: $(find active_grasp)/cfg/hw/T_base_tag.txt
