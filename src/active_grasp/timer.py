@@ -25,3 +25,5 @@ class Timer:
     def stop(self):
         elapsed_time = time.perf_counter() - self.tic
         self.timers[self.name] += elapsed_time
+        # with open(f"{self.name}.txt", "a") as f:
+        #     f.write(f"{elapsed_time}\n")
