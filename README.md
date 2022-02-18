@@ -6,16 +6,19 @@ While the policies are hardware-agnostic, the experiments are designed to work w
 
 The code was developed and tested on Ubuntu 20.04 with ROS Noetic. It depends on the following external packages:
 
-- [MoveIt](https://github.com/ros-planning/panda_moveit_config.git)
+- [MoveIt](https://github.com/ros-planning/panda_moveit_config)
+- [robot_helpers](https://github.com/mbreyer/robot_helpers)
 - [TRAC-IK](http://wiki.ros.org/trac_ik)
-- [VGN](https://github.com/ethz-asl/vgn)
-- `franka_ros` and `realsense2_camera` (only required for hardware experiments)
+- [VGN](https://github.com/ethz-asl/vgn/tree/devel)
+- franka_ros and realsense2_camera (only required for hardware experiments)
 
 Additional Python dependencies can be installed with
 
 ```
 pip install -r requirements.txt
 ```
+
+Download the [assets folder](https://drive.google.com/file/d/19NqFOrHaICXdT9NwmHSlHqWVlDDMGyeb/view) and place it inside the cloned repository.
 
 Finally, run `catkin build active_grasp` to build the package.
 
@@ -49,3 +52,5 @@ roslaunch active_grasp env.launch sim:=false
 # Run the experiment
 python3 scripts/run.py nbv --wait-for-input
 ```
+
+Rviz can be used to visualize the robot and scene reconstruction.

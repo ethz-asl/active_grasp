@@ -13,8 +13,11 @@
 
     <exec_depend>message_runtime</exec_depend>
 
+    <depend>panda_moveit_config</depend>
     <depend>geometry_msgs</depend>
+    <depend>robot_helpers</depend>
     <depend>rospy</depend>
     <depend>std_msgs</depend>
     <depend>trac_ik</depend>
+    <depend>vgn</depend>
 </package>
