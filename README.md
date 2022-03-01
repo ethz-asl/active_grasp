@@ -1,5 +1,7 @@
 # active_grasp
 
+Accompanying code for our IROS 2022 submission: Closed-Loop Next-Best-View Planning for Target-Driven Grasping.
+
 ## Setup
 
 While the policies are hardware-agnostic, the experiments are designed to work with a Franka Emika Panda and an Intel Realsense D435 attached to the wrist of the robot.
