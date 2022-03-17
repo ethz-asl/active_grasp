@@ -20,7 +20,7 @@ Additional Python dependencies can be installed with
 pip install -r requirements.txt
 ```
 
-Download the [assets folder](https://drive.google.com/file/d/19NqFOrHaICXdT9NwmHSlHqWVlDDMGyeb/view) and place it inside the cloned repository.
+Download the [assets folder](https://drive.google.com/file/d/1JzbEOVZ8qVRtOrQt15h9teUk8sVu-YGP/view) and place it inside the cloned repository.
 
 Finally, run `catkin build active_grasp` to build the package.
 
