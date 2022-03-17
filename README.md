@@ -54,5 +54,3 @@ roslaunch active_grasp env.launch sim:=false
 # Run the experiment
 python3 scripts/run.py nbv --wait-for-input
 ```
-
-Rviz can be used to visualize the robot and scene reconstruction.
