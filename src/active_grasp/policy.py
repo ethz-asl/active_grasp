@@ -112,8 +112,16 @@ class SingleViewPolicy(Policy):
             self.views.append(x)
             self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
             tsdf_grid, voxel_size = self.tsdf.get_grid(), self.tsdf.voxel_size
-            self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
-            self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
+
+            scene_cloud = self.tsdf.get_scene_cloud()
+            self.vis.scene_cloud(self.task_frame, np.asarray(scene_cloud.points))
+
+            map_cloud = self.tsdf.get_map_cloud()
+            self.vis.map_cloud(
+                self.task_frame,
+                np.asarray(map_cloud.points),
+                np.expand_dims(np.asarray(map_cloud.colors)[:, 0], 1),
+            )
 
             out = self.vgn.predict(tsdf_grid)
             self.vis.quality(self.task_frame, voxel_size, out.qual, 0.5)
@@ -142,8 +150,16 @@ class MultiViewPolicy(Policy):
 
         with Timer("tsdf_integration"):
             self.tsdf.integrate(img, self.intrinsic, x.inv() * self.T_base_task)
-        self.vis.scene_cloud(self.task_frame, self.tsdf.get_scene_cloud())
-        self.vis.map_cloud(self.task_frame, self.tsdf.get_map_cloud())
+
+        scene_cloud = self.tsdf.get_scene_cloud()
+        self.vis.scene_cloud(self.task_frame, np.asarray(scene_cloud.points))
+
+        map_cloud = self.tsdf.get_map_cloud()
+        self.vis.map_cloud(
+            self.task_frame,
+            np.asarray(map_cloud.points),
+            np.expand_dims(np.asarray(map_cloud.colors)[:, 0], 1),
+        )
 
         with Timer("grasp_prediction"):
             tsdf_grid = self.tsdf.get_grid()
