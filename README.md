@@ -1,6 +1,6 @@
 # Closed-Loop Next-Best-View Planning for Target-Driven Grasping
 
-This repository contains the implementation of our IROS 2022 submission, _"Closed-Loop Next-Best-View Planning for Target-Driven Grasping"_. [[Video](https://youtu.be/67W_VbSsAMQ)]
+This repository contains the implementation of our IROS 2022 submission, _"Closed-Loop Next-Best-View Planning for Target-Driven Grasping"_. [[Paper](http://arxiv.org/abs/2207.10543)][[Video](https://youtu.be/67W_VbSsAMQ)]
 
 ## Setup
 
