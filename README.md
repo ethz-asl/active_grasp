@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 Run `catkin build active_grasp` to build the package.
 
-Finally, download the [assets folder](https://drive.google.com/file/d/1tvPg1yIiEiY6r_lsZi6sND2D5wyvqD5b/view) and extract it inside the repository.
+Finally, download the [assets folder](https://drive.google.com/file/d/1xJF9Cd82ybCH3nCdXtQRktTr4swDcNFD/view) and extract it inside the repository.
 
 ## Experiments
 
